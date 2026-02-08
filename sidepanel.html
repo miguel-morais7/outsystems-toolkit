@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OutSystems Reactive Toolkit</title>
+  <link rel="stylesheet" href="sidepanel.css" />
+</head>
+<body>
+  <!-- ============================================================ -->
+  <!--  HEADER                                                       -->
+  <!-- ============================================================ -->
+  <header class="header">
+    <div class="header-top">
+      <h1 class="header-title">
+        <svg class="logo" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5"/>
+          <path d="M2 12l10 5 10-5"/>
+        </svg>
+        OutSystems Reactive Toolkit
+      </h1>
+      <div class="header-actions">
+        <button id="btn-scan" class="btn btn-primary" title="Scan for client variables">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10"/>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+          </svg>
+          Scan
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============================================================ -->
+  <!--  STATUS BAR                                                   -->
+  <!-- ============================================================ -->
+  <div id="status-bar" class="status-bar hidden">
+    <span id="status-text"></span>
+  </div>
+
+  <!-- ============================================================ -->
+  <!--  MAIN CONTENT                                                 -->
+  <!-- ============================================================ -->
+  <main id="main-content" class="main-content">
+    <!-- Empty state (shown before first scan) -->
+    <div id="empty-state" class="empty-state">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.4">
+        <circle cx="11" cy="11" r="8"/>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <p>Click <strong>Scan</strong> to discover client variables, producers, and screens on this page.</p>
+    </div>
+
+    <!-- Loading spinner -->
+    <div id="loading" class="loading hidden">
+      <div class="spinner"></div>
+      <p>Scanning modules…</p>
+    </div>
+
+    <!-- Variable list (populated dynamically) -->
+    <div id="var-section" class="section hidden">
+      <div class="section-header" data-section="variables">
+        <svg class="section-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+        <span class="section-title">Client Variables</span>
+        <span id="var-count" class="section-count">0</span>
+      </div>
+      <!-- Search / Filter bar -->
+      <div class="producer-search-wrapper">
+        <div class="search-bar">
+          <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input id="input-search" type="text" placeholder="Search variables…" autocomplete="off" />
+          <select id="select-module" title="Filter by module">
+            <option value="">All Modules</option>
+          </select>
+        </div>
+      </div>
+      <div id="var-list" class="var-list"></div>
+    </div>
+
+    <!-- Producer list (populated dynamically) -->
+    <div id="producer-section" class="section hidden">
+      <div class="section-header" data-section="producers">
+        <svg class="section-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+        <span class="section-title">Producers</span>
+        <span id="producer-count" class="section-count">0</span>
+      </div>
+      <!-- Producer search bar -->
+      <div class="producer-search-wrapper">
+        <div class="search-bar">
+          <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input id="input-search-producers" type="text" placeholder="Search producers…" autocomplete="off" />
+          <select id="select-producer-module" title="Filter by module">
+            <option value="">All Modules</option>
+          </select>
+        </div>
+      </div>
+      <div id="producer-list" class="var-list"></div>
+    </div>
+
+    <!-- Screen list (populated dynamically) -->
+    <div id="screen-section" class="section hidden">
+      <div class="section-header" data-section="screens">
+        <svg class="section-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+        <span class="section-title">Screens</span>
+        <span id="screen-count" class="section-count">0</span>
+      </div>
+      <!-- Screen search bar -->
+      <div class="producer-search-wrapper">
+        <div class="search-bar">
+          <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input id="input-search-screens" type="text" placeholder="Search screens…" autocomplete="off" />
+        </div>
+      </div>
+      <div id="screen-list" class="var-list"></div>
+    </div>
+  </main>
+
+  <!-- ============================================================ -->
+  <!--  TOAST CONTAINER                                              -->
+  <!-- ============================================================ -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <script src="sidepanel.js"></script>
+</body>
+</html>
