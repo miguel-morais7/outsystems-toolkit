@@ -23,7 +23,7 @@ import * as roles from './sections/roles.js';
 /*  Section registry                                                   */
 /*  Add new sections here — showLoading / showEmptyState pick them up  */
 /* ================================================================== */
-const sections = [variables, producers, screens, roles];
+const sections = [variables, screens, roles, producers];
 
 /* ================================================================== */
 /*  DOM references (orchestrator-level only)                           */
@@ -69,12 +69,8 @@ async function doScan() {
 
     // Feed data into section modules
     variables.setData(result.variables || [], result.modules || []);
-    producers.setData(result.producers || [], result.producerModules || []);
-
     variables.populateModuleFilter();
-    producers.populateModuleFilter();
     variables.render();
-    producers.render();
 
     // Screens
     if (screenResult && screenResult.ok) {
@@ -99,6 +95,11 @@ async function doScan() {
       hide(roles.sectionEl);
     }
 
+    // Producers
+    producers.setData(result.producers || [], result.producerModules || []);
+    producers.populateModuleFilter();
+    producers.render();
+
     // Build status message from section states
     const varState = variables.getState();
     const prodState = producers.getState();
@@ -111,11 +112,6 @@ async function doScan() {
       const modText = varState.moduleCount === 1 ? "module" : "modules";
       parts.push(`${varState.count} ${varText} in ${varState.moduleCount} ${modText}`);
     }
-    if (prodState.count > 0) {
-      const prodText = prodState.count === 1 ? "producer" : "producers";
-      const modText = prodState.moduleCount === 1 ? "module" : "modules";
-      parts.push(`${prodState.count} ${prodText} in ${prodState.moduleCount} ${modText}`);
-    }
     if (scrState.count > 0) {
       const scrText = scrState.count === 1 ? "screen" : "screens";
       parts.push(`${scrState.count} ${scrText}`);
@@ -123,6 +119,11 @@ async function doScan() {
     if (rolesState.count > 0) {
       const rolesText = rolesState.count === 1 ? "role" : "roles";
       parts.push(`${rolesState.count} ${rolesText}`);
+    }
+    if (prodState.count > 0) {
+      const prodText = prodState.count === 1 ? "producer" : "producers";
+      const modText = prodState.moduleCount === 1 ? "module" : "modules";
+      parts.push(`${prodState.count} ${prodText} in ${prodState.moduleCount} ${modText}`);
     }
 
     if (parts.length > 0) {
