@@ -18,7 +18,6 @@ let moduleName = "";
 let currentScreen = "";
 let collapsedScreenFlows = {};
 let expandedScreens = {};  // screenUrl -> true/false
-let screenDetailsCache = {};  // screenUrl -> { variables, aggregates, serverActions, screenActions }
 let loadingScreens = {};  // screenUrl -> true (while fetching)
 
 /* ================================================================== */
@@ -153,7 +152,6 @@ function buildScreenRow(s) {
   const isExpanded = !!expandedScreens[s.screenUrl];
   const isLoading = !!loadingScreens[s.screenUrl];
   const navUrl = screenBaseUrl + "/" + s.screenUrl;
-  const details = screenDetailsCache[s.screenUrl];
 
   let html = `
     <div class="var-row screen-row screen-row-expandable ${isCurrent ? "screen-current" : ""} ${isExpanded ? "expanded" : ""}" 
@@ -179,8 +177,8 @@ function buildScreenRow(s) {
     html += `<div class="screen-details">`;
     if (isLoading) {
       html += `<div class="screen-details-loading"><span class="mini-spinner"></span> Loading...</div>`;
-    } else if (details) {
-      html += buildScreenDetails(details);
+    } else if (s.details) {
+      html += buildScreenDetails(s.details);
     }
     html += `</div>`;
   }
@@ -280,19 +278,17 @@ async function toggleScreenExpand(screenUrl, flow, screenName) {
   // Toggle expansion
   expandedScreens[screenUrl] = !expandedScreens[screenUrl];
 
-  // If collapsing, just re-render
+  // If collapsing, clear details and re-render
   if (!expandedScreens[screenUrl]) {
+    const screen = allScreens.find(s => s.screenUrl === screenUrl);
+    if (screen) {
+      delete screen.details;  // Clear cached details
+    }
     render();
     return;
   }
 
-  // If already cached, just re-render
-  if (screenDetailsCache[screenUrl]) {
-    render();
-    return;
-  }
-
-  // Fetch details
+  // Always fetch fresh details when expanding
   loadingScreens[screenUrl] = true;
   render();
 
@@ -306,35 +302,47 @@ async function toggleScreenExpand(screenUrl, flow, screenName) {
     });
 
     if (response.ok) {
-      screenDetailsCache[screenUrl] = {
-        inputParameters: response.inputParameters || [],
-        localVariables: response.localVariables || [],
-        aggregates: response.aggregates || [],
-        dataActions: response.dataActions || [],
-        serverActions: response.serverActions || [],
-        screenActions: response.screenActions || [],
-      };
+      // Store details directly on the screen object
+      const screen = allScreens.find(s => s.screenUrl === screenUrl);
+      if (screen) {
+        screen.details = {
+          inputParameters: response.inputParameters || [],
+          localVariables: response.localVariables || [],
+          aggregates: response.aggregates || [],
+          dataActions: response.dataActions || [],
+          serverActions: response.serverActions || [],
+          screenActions: response.screenActions || [],
+        };
+      }
     } else {
-      screenDetailsCache[screenUrl] = {
+      // Store error details
+      const screen = allScreens.find(s => s.screenUrl === screenUrl);
+      if (screen) {
+        screen.details = {
+          inputParameters: [],
+          localVariables: [],
+          aggregates: [],
+          dataActions: [],
+          serverActions: [],
+          screenActions: [],
+          error: response.error,
+        };
+      }
+    }
+  } catch (e) {
+    // Store error details
+    const screen = allScreens.find(s => s.screenUrl === screenUrl);
+    if (screen) {
+      screen.details = {
         inputParameters: [],
         localVariables: [],
         aggregates: [],
         dataActions: [],
         serverActions: [],
         screenActions: [],
-        error: response.error,
+        error: e.message,
       };
     }
-  } catch (e) {
-    screenDetailsCache[screenUrl] = {
-      inputParameters: [],
-      localVariables: [],
-      aggregates: [],
-      dataActions: [],
-      serverActions: [],
-      screenActions: [],
-      error: e.message,
-    };
   }
 
   loadingScreens[screenUrl] = false;
