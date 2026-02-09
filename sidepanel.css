@@ -310,6 +310,9 @@ body {
   padding: 8px 14px;
   background: var(--bg-primary);
   border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 41px;
+  z-index: 3;
 }
 
 .producer-search-wrapper .search-bar {
