@@ -217,13 +217,25 @@ function buildScreenDetails(details) {
     html += `</div>`;
   }
 
-  // Aggregates / Data Actions
+  // Aggregates
   if (details.aggregates.length > 0) {
     html += `<div class="screen-detail-section">`;
-    html += `<div class="screen-detail-header">Aggregates / Data Actions</div>`;
+    html += `<div class="screen-detail-header">Aggregates</div>`;
     for (const a of details.aggregates) {
       html += `<div class="screen-detail-item">
         <span class="screen-detail-name">${esc(a.name)}</span>
+      </div>`;
+    }
+    html += `</div>`;
+  }
+
+  // Data Actions
+  if (details.dataActions && details.dataActions.length > 0) {
+    html += `<div class="screen-detail-section">`;
+    html += `<div class="screen-detail-header">Data Actions</div>`;
+    for (const da of details.dataActions) {
+      html += `<div class="screen-detail-item">
+        <span class="screen-detail-name">${esc(da.name)}</span>
       </div>`;
     }
     html += `</div>`;
@@ -254,8 +266,9 @@ function buildScreenDetails(details) {
   }
 
   // If no details at all
+  const hasDataActions = details.dataActions && details.dataActions.length > 0;
   if (details.inputParameters.length === 0 && details.localVariables.length === 0 &&
-    details.aggregates.length === 0 && details.serverActions.length === 0 &&
+    details.aggregates.length === 0 && !hasDataActions && details.serverActions.length === 0 &&
     details.screenActions.length === 0) {
     html += `<div class="screen-details-empty">No details found for this screen.</div>`;
   }
@@ -297,6 +310,7 @@ async function toggleScreenExpand(screenUrl, flow, screenName) {
         inputParameters: response.inputParameters || [],
         localVariables: response.localVariables || [],
         aggregates: response.aggregates || [],
+        dataActions: response.dataActions || [],
         serverActions: response.serverActions || [],
         screenActions: response.screenActions || [],
       };
@@ -305,6 +319,7 @@ async function toggleScreenExpand(screenUrl, flow, screenName) {
         inputParameters: [],
         localVariables: [],
         aggregates: [],
+        dataActions: [],
         serverActions: [],
         screenActions: [],
         error: response.error,
@@ -315,6 +330,7 @@ async function toggleScreenExpand(screenUrl, flow, screenName) {
       inputParameters: [],
       localVariables: [],
       aggregates: [],
+      dataActions: [],
       serverActions: [],
       screenActions: [],
       error: e.message,

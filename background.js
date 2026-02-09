@@ -343,6 +343,7 @@ async function handleFetchScreenDetails(baseUrl, moduleName, flow, screenName) {
     inputParameters: [],
     localVariables: [],
     aggregates: [],
+    dataActions: [],
     serverActions: [],
     screenActions: [],
   };
@@ -393,12 +394,18 @@ async function handleFetchScreenDetails(baseUrl, moduleName, flow, screenName) {
     const namesStr = dataFetchMatch[1];
     const namePattern = /"([^"]+)"/g;
     while ((match = namePattern.exec(namesStr)) !== null) {
-      let name = match[1];
-      // Clean up the name (remove $AggrRefresh or $DataActRefresh suffix)
-      name = name.replace(/\$AggrRefresh$/, "").replace(/\$DataActRefresh$/, "");
+      const rawName = match[1];
+      const isAggregate = rawName.endsWith("$AggrRefresh");
+      const isDataAction = rawName.endsWith("$DataActRefresh");
+      // Clean up the name (remove suffix)
+      let name = rawName.replace(/\$AggrRefresh$/, "").replace(/\$DataActRefresh$/, "");
       // Convert camelCase to readable: getProducts -> GetProducts
       name = name.charAt(0).toUpperCase() + name.slice(1);
-      result.aggregates.push({ name });
+      if (isAggregate) {
+        result.aggregates.push({ name });
+      } else if (isDataAction) {
+        result.dataActions.push({ name });
+      }
     }
   }
 
