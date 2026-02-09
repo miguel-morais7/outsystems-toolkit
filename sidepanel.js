@@ -16,20 +16,21 @@ import { show, hide, showStatus, hideStatus } from './utils/ui.js';
 
 import * as variables from './sections/variables.js';
 import * as producers from './sections/producers.js';
-import * as screens   from './sections/screens.js';
+import * as screens from './sections/screens.js';
+import * as roles from './sections/roles.js';
 
 /* ================================================================== */
 /*  Section registry                                                   */
 /*  Add new sections here — showLoading / showEmptyState pick them up  */
 /* ================================================================== */
-const sections = [variables, producers, screens];
+const sections = [variables, producers, screens, roles];
 
 /* ================================================================== */
 /*  DOM references (orchestrator-level only)                           */
 /* ================================================================== */
-const btnScan    = document.getElementById("btn-scan");
+const btnScan = document.getElementById("btn-scan");
 const emptyState = document.getElementById("empty-state");
-const loading    = document.getElementById("loading");
+const loading = document.getElementById("loading");
 
 /* ================================================================== */
 /*  Init                                                               */
@@ -56,9 +57,10 @@ async function doScan() {
   hideStatus();
 
   try {
-    const [result, screenResult] = await Promise.all([
+    const [result, screenResult, rolesResult] = await Promise.all([
       sendMessage({ action: "SCAN" }),
       sendMessage({ action: "FETCH_SCREENS" }).catch(() => null),
+      sendMessage({ action: "FETCH_ROLES" }).catch(() => null),
     ]);
 
     if (!result || !result.ok) {
@@ -87,10 +89,20 @@ async function doScan() {
       hide(screens.sectionEl);
     }
 
+    // Roles
+    if (rolesResult && rolesResult.ok) {
+      roles.setData(rolesResult.roles || []);
+      roles.render();
+    } else {
+      roles.setData([]);
+      hide(roles.sectionEl);
+    }
+
     // Build status message from section states
-    const varState  = variables.getState();
+    const varState = variables.getState();
     const prodState = producers.getState();
-    const scrState  = screens.getState();
+    const scrState = screens.getState();
+    const rolesState = roles.getState();
 
     const parts = [];
     if (varState.count > 0) {
@@ -100,18 +112,22 @@ async function doScan() {
     }
     if (prodState.count > 0) {
       const prodText = prodState.count === 1 ? "producer" : "producers";
-      const modText  = prodState.moduleCount === 1 ? "module" : "modules";
+      const modText = prodState.moduleCount === 1 ? "module" : "modules";
       parts.push(`${prodState.count} ${prodText} in ${prodState.moduleCount} ${modText}`);
     }
     if (scrState.count > 0) {
       const scrText = scrState.count === 1 ? "screen" : "screens";
       parts.push(`${scrState.count} ${scrText}`);
     }
+    if (rolesState.count > 0) {
+      const rolesText = rolesState.count === 1 ? "role" : "roles";
+      parts.push(`${rolesState.count} ${rolesText}`);
+    }
 
     if (parts.length > 0) {
       showStatus(`Found ${parts.join(", ")}.`, "success");
     } else {
-      showStatus("No client variables, producers, or screens found on this page.", "error");
+      showStatus("No client variables, producers, screens, or roles found on this page.", "error");
       showEmptyState();
     }
   } catch (err) {
@@ -148,7 +164,7 @@ function showEmptyState() {
 doScan();
 
 const AUTO_SCAN_DELAY_MS = 1500;
-const AUTO_SCAN_RETRIES  = 3;
+const AUTO_SCAN_RETRIES = 3;
 const AUTO_SCAN_RETRY_MS = 2000;
 
 let autoScanTimer = null;

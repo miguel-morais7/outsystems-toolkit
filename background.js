@@ -50,6 +50,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .catch((err) => sendResponse({ ok: false, error: err.message }));
     return true;
   }
+
+  if (message.action === "FETCH_ROLES") {
+    handleFetchRoles()
+      .then(sendResponse)
+      .catch((err) => sendResponse({ ok: false, error: err.message }));
+    return true;
+  }
 });
 
 /* ------------------------------------------------------------------ */
@@ -232,6 +239,70 @@ async function handleFetchScreens() {
     moduleName,
     baseUrl: `${url.origin}/${moduleName}`,
     currentScreen,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/*  FETCH ROLES (via controller.js)                                    */
+/* ------------------------------------------------------------------ */
+async function handleFetchRoles() {
+  const tab = await getActiveTab();
+  const pageUrl = tab.url;
+
+  if (!pageUrl || !pageUrl.startsWith("http")) {
+    return { ok: false, error: "Cannot access tab URL." };
+  }
+
+  const url = new URL(pageUrl);
+  const pathParts = url.pathname.split("/").filter(Boolean);
+  if (pathParts.length === 0) {
+    return { ok: false, error: "Cannot determine module name from URL." };
+  }
+
+  const moduleName = pathParts[0];
+  // Convert module name to the controller script format
+  const controllerFileName = moduleName.charAt(0).toUpperCase() + moduleName.slice(1).toLowerCase() + ".controller.js";
+  const controllerUrl = `${url.origin}/${moduleName}/scripts/${controllerFileName}`;
+
+  let response;
+  try {
+    response = await fetch(controllerUrl, { credentials: "include" });
+  } catch (e) {
+    return { ok: false, error: `Network error: ${e.message}` };
+  }
+
+  if (!response.ok) {
+    return { ok: false, error: `Failed to fetch controller.js (HTTP ${response.status}).` };
+  }
+
+  let scriptText;
+  try {
+    scriptText = await response.text();
+  } catch (e) {
+    return { ok: false, error: "Failed to read controller.js content." };
+  }
+
+  // Extract roles from Controller.prototype.roles = { ... }
+  // Check if roles block exists
+  if (!scriptText.includes("Controller.prototype.roles")) {
+    return { ok: true, roles: [], moduleName };
+  }
+
+  const roles = [];
+
+  // Match each role entry: RoleName: { roleKey: "...", roleException: new OS.Exceptions.Exceptions.NotRegisteredException("...", "message") }
+  const rolePattern = /(\w+)\s*:\s*\{\s*roleKey\s*:\s*"[^"]*"\s*,\s*roleException\s*:\s*new\s+OS\.Exceptions\.Exceptions\.NotRegisteredException\s*\([^)]*\)/g;
+  let match;
+  while ((match = rolePattern.exec(scriptText)) !== null) {
+    roles.push({
+      name: match[1]
+    });
+  }
+
+  return {
+    ok: true,
+    roles,
+    moduleName,
   };
 }
 
