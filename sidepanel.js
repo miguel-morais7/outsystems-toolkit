@@ -81,11 +81,12 @@ async function doScan() {
       screens.setData(
         screenResult.screens || [],
         screenResult.baseUrl || "",
+        screenResult.moduleName || "",
         screenResult.currentScreen || ""
       );
       screens.render();
     } else {
-      screens.setData([], "", "");
+      screens.setData([], "", "", "");
       hide(screens.sectionEl);
     }
 

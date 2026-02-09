@@ -57,6 +57,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .catch((err) => sendResponse({ ok: false, error: err.message }));
     return true;
   }
+
+  if (message.action === "FETCH_SCREEN_DETAILS") {
+    handleFetchScreenDetails(message.baseUrl, message.moduleName, message.flow, message.screenName)
+      .then(sendResponse)
+      .catch((err) => sendResponse({ ok: false, error: err.message }));
+    return true;
+  }
 });
 
 /* ------------------------------------------------------------------ */
@@ -304,6 +311,121 @@ async function handleFetchRoles() {
     roles,
     moduleName,
   };
+}
+
+/* ------------------------------------------------------------------ */
+/*  FETCH SCREEN DETAILS (via mvc.js)                                  */
+/* ------------------------------------------------------------------ */
+async function handleFetchScreenDetails(baseUrl, moduleName, flow, screenName) {
+  // Construct the MVC file URL: {baseUrl}/scripts/{Module}.{Flow}.{Screen}.mvc.js
+  const mvcUrl = `${baseUrl}/scripts/${moduleName}.${flow}.${screenName}.mvc.js`;
+
+  let response;
+  try {
+    response = await fetch(mvcUrl, { credentials: "include" });
+  } catch (e) {
+    return { ok: false, error: `Network error: ${e.message}` };
+  }
+
+  if (!response.ok) {
+    return { ok: false, error: `Failed to fetch MVC file (HTTP ${response.status}).` };
+  }
+
+  let scriptText;
+  try {
+    scriptText = await response.text();
+  } catch (e) {
+    return { ok: false, error: "Failed to read MVC file content." };
+  }
+
+  const result = {
+    ok: true,
+    inputParameters: [],
+    localVariables: [],
+    aggregates: [],
+    serverActions: [],
+    screenActions: [],
+  };
+
+  // ----------------------------------------------------------------
+  // Extract Input Parameter names from Model.prototype.setInputs
+  // Pattern: if("ParamName" in inputs) { ... }
+  // ----------------------------------------------------------------
+  const inputParamNames = new Set();
+  const setInputsMatch = scriptText.match(/Model\.prototype\.setInputs\s*=\s*function\s*\([^)]*\)\s*\{([\s\S]*?)\n\};/);
+  if (setInputsMatch) {
+    const setInputsBody = setInputsMatch[1];
+    const inputPattern = /if\s*\(\s*"([^"]+)"\s*in\s+inputs\s*\)/g;
+    let inputMatch;
+    while ((inputMatch = inputPattern.exec(setInputsBody)) !== null) {
+      inputParamNames.add(inputMatch[1]);
+    }
+  }
+
+  // ----------------------------------------------------------------
+  // Parse Screen Variables from VariablesRecord.attributesToDeclare
+  // Pattern: this.attr("DisplayName", "internalName", "...", true, false, OS.DataTypes.DataTypes.TypeName, ...)
+  // ----------------------------------------------------------------
+  const varPattern = /this\.attr\s*\(\s*"([^"]+)"\s*,\s*"([^"]+)"\s*,\s*"[^"]*"\s*,\s*(?:true|false)\s*,\s*(?:true|false)\s*,\s*OS\.DataTypes\.DataTypes\.(\w+)/g;
+  let match;
+  const seenVars = new Set();
+  while ((match = varPattern.exec(scriptText)) !== null) {
+    const displayName = match[1];
+    const dataType = match[3];
+    // Skip aggregate/data action outputs (they have "Aggr" or "DataAct" in internal name)
+    // Skip internal DataFetchStatus variables
+    if (!seenVars.has(displayName) && !match[2].includes("Aggr") && !match[2].includes("DataAct") && !displayName.startsWith("_")) {
+      if (inputParamNames.has(displayName)) {
+        result.inputParameters.push({ name: displayName, type: dataType });
+      } else {
+        result.localVariables.push({ name: displayName, type: dataType });
+      }
+      seenVars.add(displayName);
+    }
+  }
+
+  // ----------------------------------------------------------------
+  // Parse Aggregates and Data Actions from dataFetchActionNames
+  // Pattern: Controller.prototype.dataFetchActionNames = ["name1$AggrRefresh", "name2$DataActRefresh"];
+  // ----------------------------------------------------------------
+  const dataFetchMatch = scriptText.match(/dataFetchActionNames\s*=\s*\[([\s\S]*?)\]/);
+  if (dataFetchMatch) {
+    const namesStr = dataFetchMatch[1];
+    const namePattern = /"([^"]+)"/g;
+    while ((match = namePattern.exec(namesStr)) !== null) {
+      let name = match[1];
+      // Clean up the name (remove $AggrRefresh or $DataActRefresh suffix)
+      name = name.replace(/\$AggrRefresh$/, "").replace(/\$DataActRefresh$/, "");
+      // Convert camelCase to readable: getProducts -> GetProducts
+      name = name.charAt(0).toUpperCase() + name.slice(1);
+      result.aggregates.push({ name });
+    }
+  }
+
+  // ----------------------------------------------------------------
+  // Parse Server Actions
+  // Pattern: Controller.prototype.actionName$ServerAction = function
+  // ----------------------------------------------------------------
+  const serverActionPattern = /Controller\.prototype\.(\w+)\$ServerAction\s*=/g;
+  while ((match = serverActionPattern.exec(scriptText)) !== null) {
+    const name = match[1].charAt(0).toUpperCase() + match[1].slice(1);
+    result.serverActions.push({ name });
+  }
+
+  // ----------------------------------------------------------------
+  // Parse Screen Actions (Client Actions)
+  // Pattern: Controller.prototype._actionName$Action = function
+  // We look for the underscore-prefixed versions which are the actual implementations
+  // ----------------------------------------------------------------
+  const screenActionPattern = /Controller\.prototype\._(\w+)\$Action\s*=/g;
+  while ((match = screenActionPattern.exec(scriptText)) !== null) {
+    const name = match[1];
+    // Convert camelCase: onSort -> OnSort
+    const displayName = name.charAt(0).toUpperCase() + name.slice(1);
+    result.screenActions.push({ name: displayName });
+  }
+
+  return result;
 }
 
 /* ------------------------------------------------------------------ */

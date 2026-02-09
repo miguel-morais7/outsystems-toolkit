@@ -691,3 +691,109 @@ body {
   color: var(--os-red);
   background: var(--bg-hover);
 }
+
+/* ------------------------------------------------------------------ */
+/*  EXPANDABLE SCREEN ROWS                                             */
+/* ------------------------------------------------------------------ */
+
+.screen-row-expandable {
+  cursor: pointer;
+}
+
+.screen-row-expandable .var-info {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+}
+
+.screen-expand-chevron {
+  flex-shrink: 0;
+  transition: transform var(--transition);
+  color: var(--text-muted);
+}
+
+.screen-row-expandable.expanded .screen-expand-chevron {
+  transform: rotate(180deg);
+}
+
+.screen-row-expandable:hover .screen-expand-chevron {
+  color: var(--text-primary);
+}
+
+/* Screen Details Panel */
+.screen-details {
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 14px 8px 34px;
+}
+
+.screen-details-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 11px;
+  padding: 4px 0;
+}
+
+.mini-spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--border);
+  border-top-color: var(--os-red);
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+  display: inline-block;
+}
+
+.screen-details-empty {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-style: italic;
+  padding: 4px 0;
+}
+
+.screen-detail-section {
+  margin-bottom: 8px;
+}
+
+.screen-detail-section:last-child {
+  margin-bottom: 0;
+}
+
+.screen-detail-header {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--os-red-dark);
+  margin-bottom: 4px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid var(--border);
+}
+
+.screen-detail-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.screen-detail-name {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.screen-detail-type {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+  background: var(--bg-hover);
+  padding: 1px 6px;
+  border-radius: 8px;
+}
+
