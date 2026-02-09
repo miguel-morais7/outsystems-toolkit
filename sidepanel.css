@@ -250,32 +250,35 @@ body {
   margin-bottom: 0;
 }
 
-/* Section header (Client Variables, Producers) */
+/* Section header (Client Variables, Producers, Screens, Roles) */
 .section-header {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 12px 14px;
-  font-size: 15px;
+  gap: 8px;
+  padding: 10px 16px;
+  font-size: 14px;
   font-weight: 700;
-  color: var(--os-red);
-  background: var(--bg-primary);
-  border-bottom: 2px solid var(--os-red);
+  color: #ffffff;
+  background: linear-gradient(135deg, #ec6b5e 0%, #e43e2b 100%);
+  border-bottom: 1px solid rgba(228, 62, 43, 0.2);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   position: sticky;
   top: 0;
   z-index: 3;
   cursor: pointer;
   user-select: none;
+  transition: all 0.2s ease;
 }
 
 .section-header:hover {
-  background: var(--bg-hover);
+  background: linear-gradient(135deg, #ef7f74 0%, #ec6b5e 100%);
+  box-shadow: 0 3px 8px rgba(228, 62, 43, 0.15);
 }
 
 .section-chevron {
   flex-shrink: 0;
   transition: transform var(--transition);
-  color: var(--os-red);
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .section.collapsed .section-chevron {
@@ -289,14 +292,16 @@ body {
 }
 
 .section-count {
-  font-size: 14px;
-  font-weight: 600;
-  background: var(--os-red-light);
-  color: var(--os-red-dark);
+  font-size: 12px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
   border-radius: 12px;
-  padding: 2px 10px;
+  padding: 3px 10px;
   min-width: 24px;
   text-align: center;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 /* Section body collapsing */
@@ -328,34 +333,30 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 16px;
-  font-size: 13px;
+  padding: 8px 16px 8px 24px;
+  font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #ffffff;
-  background: linear-gradient(135deg, #e43e2b 0%, #c33522 100%);
+  color: var(--os-red-dark);
+  background: var(--os-red-light);
   cursor: pointer;
   user-select: none;
-  border-bottom: 2px solid rgba(228, 62, 43, 0.3);
-  box-shadow: 0 2px 8px rgba(228, 62, 43, 0.15);
+  border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
   z-index: 2;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background var(--transition);
 }
 
 .module-header:hover {
-  background: linear-gradient(135deg, #f04e3b 0%, #d94532 100%);
-  box-shadow: 0 4px 12px rgba(228, 62, 43, 0.25);
-  transform: translateY(-1px);
+  background: #f5d5d1;
 }
 
 .module-header .chevron {
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   flex-shrink: 0;
-  color: rgba(255, 255, 255, 0.9);
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
+  color: var(--os-red);
 }
 
 .module-header.collapsed .chevron {
@@ -365,14 +366,12 @@ body {
 .module-header .count-badge {
   font-size: 11px;
   font-weight: 700;
-  background: rgba(255, 255, 255, 0.25);
-  color: #ffffff;
+  background: rgba(228, 62, 43, 0.12);
+  color: var(--os-red-dark);
   border-radius: 12px;
-  padding: 3px 9px;
+  padding: 2px 8px;
   margin-left: auto;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(228, 62, 43, 0.2);
 }
 
 .module-body {
@@ -808,7 +807,6 @@ body {
 .screen-details {
   background: linear-gradient(135deg, rgba(228, 62, 43, 0.03) 0%, rgba(195, 53, 34, 0.03) 100%);
   border-bottom: 1px solid var(--border);
-  border-left: 3px solid var(--os-red);
   padding: 12px 16px 12px 36px;
   margin-left: 12px;
   box-shadow: inset 0 2px 4px rgba(228, 62, 43, 0.05);
