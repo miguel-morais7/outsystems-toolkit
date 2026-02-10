@@ -119,6 +119,9 @@ function _osClientVarsScan() {
                   if (getterSrc.includes("DataTypes.DateTime")) valueType = "Date Time";
                   else if (getterSrc.includes("DataTypes.Date")) valueType = "Date";
                   else if (getterSrc.includes("DataTypes.Time")) valueType = "Time";
+                  else if (getterSrc.includes("DataTypes.Currency")) valueType = "Currency";
+                  else if (getterSrc.includes("DataTypes.LongInteger")) valueType = "Long Integer";
+                  else if (getterSrc.includes("DataTypes.Decimal")) valueType = "Decimal";
                 } catch (srcErr) { /* source inspection failed, will detect from value */ }
 
                 value = mod[key]();
@@ -551,18 +554,15 @@ function _coerceValue(raw, varType) {
     case "Boolean":
       if (typeof raw === "boolean") return { value: raw };
       return { value: raw === "true" || raw === "True" || raw === "1" };
-    case "Integer":
-    case "Long Integer": {
+    case "Integer": {
       const parsed = parseInt(raw, 10);
       if (isNaN(parsed)) return { error: "Invalid integer: " + raw };
       return { value: parsed };
     }
+    case "Long Integer":
     case "Decimal":
-    case "Currency": {
-      const parsed = parseFloat(raw);
-      if (isNaN(parsed)) return { error: "Invalid number: " + raw };
-      return { value: parsed };
-    }
+    case "Currency":
+      return _coerceNumericValue(raw, varType);
     case "Date":
     case "Time":
     case "Date Time":
@@ -570,6 +570,36 @@ function _coerceValue(raw, varType) {
     default:
       return { value: String(raw) };
   }
+}
+
+/**
+ * Convert a raw numeric string into the OS-internal representation for
+ * Currency, Decimal, and Long Integer types.
+ * The OutSystems runtime wraps these in special objects — plain JS numbers
+ * are rejected by clientVarsService.setVariable().
+ */
+function _coerceNumericValue(raw, varType) {
+  // Validate it looks like a number first
+  const parsed = varType === "Long Integer" ? parseInt(raw, 10) : parseFloat(raw);
+  if (isNaN(parsed)) return { error: "Invalid number: " + raw };
+
+  // Use the OS runtime converter to produce the correct wrapper type
+  const OS = window.__osRuntime;
+  if (OS && OS.DataConversion && OS.DataConversion.ServerDataConverter) {
+    try {
+      const typeEnum =
+        varType === "Long Integer" ? OS.DataTypes.DataTypes.LongInteger :
+          varType === "Currency" ? OS.DataTypes.DataTypes.Currency :
+            OS.DataTypes.DataTypes.Decimal;
+
+      const converted = OS.DataConversion.ServerDataConverter.from(String(raw), typeEnum);
+      if (converted !== undefined && converted !== null) {
+        return { value: converted };
+      }
+    } catch (e) { /* fall through to plain number */ }
+  }
+
+  return { value: parsed };
 }
 
 /**
@@ -658,6 +688,17 @@ function _safeSerialize(value) {
   }
   if (typeof value === "object" && typeof value.toISOString === "function") {
     try { return value.toISOString(); } catch (e) { /* fall through */ }
+  }
+  // OutSystems Decimal/Currency/LongInteger wrapper objects
+  if (typeof value === "object" && value !== null) {
+    try {
+      const num = Number(value);
+      if (!isNaN(num)) return num;
+    } catch (e) { /* fall through */ }
+    if (typeof value.toString === "function") {
+      const str = value.toString();
+      if (/^-?\d+(\.\d+)?$/.test(str)) return parseFloat(str);
+    }
   }
   try {
     return JSON.parse(JSON.stringify(value));

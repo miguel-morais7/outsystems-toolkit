@@ -387,7 +387,10 @@ async function handleFetchScreenDetails(baseUrl, moduleName, flow, screenName) {
   while ((match = varPattern.exec(scriptText)) !== null) {
     const displayName = match[1];
     const internalName = match[2];
-    const dataType = match[3];
+    const rawType = match[3];
+    // Normalize OutSystems DataTypes to display names (e.g. "DateTime" → "Date Time")
+    const TYPE_MAP = { DateTime: "Date Time", LongInteger: "Long Integer" };
+    const dataType = TYPE_MAP[rawType] || rawType;
     // Skip aggregate/data action outputs (they have "Aggr" or "DataAct" in internal name)
     // Skip internal DataFetchStatus variables
     if (!seenVars.has(displayName) && !internalName.includes("Aggr") && !internalName.includes("DataAct") && !displayName.startsWith("_")) {
