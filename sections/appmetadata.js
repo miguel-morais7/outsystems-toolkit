@@ -1,0 +1,121 @@
+/**
+ * sections/appmetadata.js — App Metadata section
+ *
+ * Displays read-only key-value metadata from the appDefinition module.
+ * Shows application name, environment, debug status, and other
+ * deployment-level information.
+ */
+
+import { esc } from '../utils/helpers.js';
+import { show, hide } from '../utils/ui.js';
+
+/* ================================================================== */
+/*  State                                                              */
+/* ================================================================== */
+let metadataEntries = []; // Array of { key, label, value }
+
+/* ================================================================== */
+/*  DOM references                                                     */
+/* ================================================================== */
+const metadataList = document.getElementById("metadata-list");
+const metadataCount = document.getElementById("metadata-count");
+const emptyState = document.getElementById("empty-state");
+
+/** The root section element (exported for the orchestrator). */
+export const sectionEl = document.getElementById("metadata-section");
+
+/* ================================================================== */
+/*  Public API                                                         */
+/* ================================================================== */
+
+/** Wire up event listeners. Call once at startup. */
+export function init() {
+  // No event listeners — this section is purely read-only
+}
+
+/** Replace section data after a scan. */
+export function setData(appDef) {
+  if (!appDef) {
+    metadataEntries = [];
+    return;
+  }
+  metadataEntries = buildEntries(appDef);
+}
+
+/** Return counts for the status-bar summary. */
+export function getState() {
+  return { count: metadataEntries.length };
+}
+
+/** Render (or re-render) the metadata list. */
+export function render() {
+  if (metadataEntries.length === 0) {
+    hide(sectionEl);
+    return;
+  }
+
+  metadataCount.textContent = metadataEntries.length;
+
+  let html = "";
+  for (const entry of metadataEntries) {
+    html += buildMetadataRow(entry);
+  }
+
+  metadataList.innerHTML = html;
+  show(sectionEl);
+  hide(emptyState);
+}
+
+/* ================================================================== */
+/*  Private helpers                                                    */
+/* ================================================================== */
+
+/**
+ * Convert the raw appDefinition object into a curated array of
+ * display-friendly { label, value, key } entries.
+ */
+function buildEntries(appDef) {
+  const fields = [
+    { key: "applicationName",   label: "Application" },
+    { key: "environmentName",   label: "Environment" },
+    { key: "debugEnabled",      label: "Debug Mode" },
+    { key: "homeModuleName",    label: "Home Module" },
+    { key: "userProviderName",  label: "User Provider" },
+    { key: "defaultTransition", label: "Transition" },
+    { key: "isWeb",             label: "Is Web" },
+    { key: "showWatermark",     label: "Watermark" },
+    { key: "applicationKey",    label: "App Key" },
+    { key: "environmentKey",    label: "Environment Key" },
+    { key: "homeModuleKey",     label: "Module Key" },
+  ];
+
+  const entries = [];
+  for (const f of fields) {
+    if (f.key in appDef) {
+      entries.push({
+        key: f.key,
+        label: f.label,
+        value: formatValue(appDef[f.key]),
+      });
+    }
+  }
+  return entries;
+}
+
+function formatValue(val) {
+  if (val === null || val === undefined) return "null";
+  if (typeof val === "boolean") return val ? "Yes" : "No";
+  return String(val);
+}
+
+function buildMetadataRow(entry) {
+  return `
+    <div class="var-row metadata-row" data-key="${esc(entry.key)}">
+      <div class="var-info">
+        <span class="var-name">${esc(entry.label)}</span>
+      </div>
+      <div class="var-value-wrap">
+        <span class="metadata-value">${esc(entry.value)}</span>
+      </div>
+    </div>`;
+}

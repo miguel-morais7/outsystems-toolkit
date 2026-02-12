@@ -20,8 +20,9 @@ function _osClientVarsScan() {
   return new Promise(async (resolve) => {
     const SCAN_TIMEOUT_MS = 10000;
 
-    // Scan both client variables and producers in parallel
+    // Scan client variables, producers, and app definition in parallel
     const producersPromise = _osProducersScan();
+    const appDefPromise = _osAppDefinitionScan();
 
     // 1. Find all *.clientVariables.js resource entries
     const scripts = performance.getEntriesByType("resource");
@@ -41,14 +42,15 @@ function _osClientVarsScan() {
     });
 
     if (moduleMap.size === 0) {
-      // Still wait for producers scan even if no client vars
-      const producersData = await producersPromise;
+      // Still wait for parallel scans even if no client vars
+      const [producersData, appDefData] = await Promise.all([producersPromise, appDefPromise]);
       resolve({
         ok: true,
         modules: [],
         variables: [],
         producerModules: producersData.producerModules || [],
-        producers: producersData.producers || []
+        producers: producersData.producers || [],
+        appDefinition: appDefData.appDefinition || null
       });
       return;
     }
@@ -69,15 +71,16 @@ function _osClientVarsScan() {
           : a.module.localeCompare(b.module)
       );
 
-      // Wait for producers scan to complete
-      const producersData = await producersPromise;
+      // Wait for parallel scans to complete
+      const [producersData, appDefData] = await Promise.all([producersPromise, appDefPromise]);
 
       resolve({
         ok: true,
         modules: moduleList,
         variables: allVars,
         producerModules: producersData.producerModules || [],
-        producers: producersData.producers || []
+        producers: producersData.producers || [],
+        appDefinition: appDefData.appDefinition || null
       });
     }
     // Capture the OutSystems runtime reference for date/time conversion
@@ -293,6 +296,79 @@ function _osProducersScan() {
           if (remaining === 0) finalize();
         });
     });
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/*  SCAN APP DEFINITION — discover appDefinition module metadata       */
+/* ------------------------------------------------------------------ */
+function _osAppDefinitionScan() {
+  return new Promise((resolve) => {
+    const SCAN_TIMEOUT_MS = 5000;
+
+    // 1. Find *.appDefinition.js resource entry
+    const scripts = performance.getEntriesByType("resource");
+    let moduleName = null;
+
+    for (const entry of scripts) {
+      if (
+        entry.initiatorType === "script" &&
+        entry.name.includes("appDefinition.js")
+      ) {
+        const matches = entry.name.match(/([^\/]+)\.appDefinition\.js/);
+        if (matches && matches[1]) {
+          moduleName = matches[1] + ".appDefinition";
+          break; // One appDefinition per app
+        }
+      }
+    }
+
+    if (!moduleName) {
+      resolve({ ok: true, appDefinition: null });
+      return;
+    }
+
+    let resolved = false;
+
+    // Safety timeout
+    setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        resolve({ ok: true, appDefinition: null });
+      }
+    }, SCAN_TIMEOUT_MS);
+
+    // 2. require() the AMD module
+    try {
+      require([moduleName], function (mod) {
+        if (resolved) return;
+        resolved = true;
+
+        // Clone to a plain object for safe serialization across worlds
+        const appDef = {};
+        for (const key in mod) {
+          if (Object.prototype.hasOwnProperty.call(mod, key)) {
+            const val = mod[key];
+            if (val === null || typeof val !== "object") {
+              appDef[key] = val;
+            } else {
+              try {
+                appDef[key] = JSON.parse(JSON.stringify(val));
+              } catch {
+                appDef[key] = String(val);
+              }
+            }
+          }
+        }
+
+        resolve({ ok: true, appDefinition: appDef });
+      });
+    } catch (e) {
+      if (!resolved) {
+        resolved = true;
+        resolve({ ok: true, appDefinition: null });
+      }
+    }
   });
 }
 

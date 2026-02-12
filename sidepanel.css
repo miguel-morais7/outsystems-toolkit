@@ -977,3 +977,20 @@ body {
 .screen-var-row.error {
   animation: flash-red .6s ease;
 }
+
+/* ------------------------------------------------------------------ */
+/*  APP METADATA SECTION                                               */
+/* ------------------------------------------------------------------ */
+
+.metadata-row .var-info {
+  flex-direction: row;
+  align-items: center;
+}
+
+.metadata-value {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-primary);
+  word-break: break-all;
+  text-align: right;
+}
