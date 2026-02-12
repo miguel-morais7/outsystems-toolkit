@@ -14,6 +14,7 @@
 import { sendMessage } from './utils/helpers.js';
 import { show, hide, showStatus, hideStatus } from './utils/ui.js';
 
+import * as appmetadata from './sections/appmetadata.js';
 import * as variables from './sections/variables.js';
 import * as producers from './sections/producers.js';
 import * as screens from './sections/screens.js';
@@ -23,7 +24,7 @@ import * as roles from './sections/roles.js';
 /*  Section registry                                                   */
 /*  Add new sections here — showLoading / showEmptyState pick them up  */
 /* ================================================================== */
-const sections = [variables, screens, roles, producers];
+const sections = [appmetadata, variables, screens, roles, producers];
 
 /* ================================================================== */
 /*  DOM references (orchestrator-level only)                           */
@@ -68,6 +69,9 @@ async function doScan() {
     }
 
     // Feed data into section modules
+    appmetadata.setData(result.appDefinition || null);
+    appmetadata.render();
+
     variables.setData(result.variables || [], result.modules || []);
     variables.populateModuleFilter();
     variables.render();
