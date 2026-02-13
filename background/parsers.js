@@ -208,7 +208,7 @@ export async function fetchScreenDetails(baseUrl, moduleName, flow, screenName) 
     const internalName = match[2];
     const rawType = match[3];
     // Normalize OutSystems DataTypes to display names (e.g. "DateTime" → "Date Time")
-    const TYPE_MAP = { DateTime: "Date Time", LongInteger: "Long Integer" };
+    const TYPE_MAP = { DateTime: "Date Time", LongInteger: "Long Integer", PhoneNumber: "Phone Number" };
     const dataType = TYPE_MAP[rawType] || rawType;
     // Skip aggregate/data action outputs (they have "Aggr" or "DataAct" in internal name)
     // Skip internal DataFetchStatus variables

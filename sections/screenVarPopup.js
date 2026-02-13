@@ -268,7 +268,7 @@ function buildTreeLeaf(node, path, displayKey) {
   const pathJson = escAttr(JSON.stringify(path));
 
   // Boolean: show toggle
-  if (node.type === "boolean" || val === "true" || val === "false") {
+  if (node.type === "boolean" || node.type === "Boolean" || val === "true" || val === "false") {
     const active = val === "true" ? " active" : "";
     return `<div class="var-tree-leaf" data-path="${pathJson}" data-type="Boolean">
       <span class="var-tree-leaf-name">${esc(displayKey)}:</span>
@@ -286,6 +286,7 @@ function buildTreeLeaf(node, path, displayKey) {
              value="${escAttr(displayValue)}"
              data-original="${escAttr(displayValue)}"
              ${node.type === "Time" ? 'step="1"' : ""} />
+      <span class="var-tree-leaf-type">${esc(node.type)}</span>
     </div>`;
   }
 

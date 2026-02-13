@@ -526,6 +526,65 @@ function _listGet(list, index) {
 }
 
 /**
+ * Mapping from OutSystems DataTypes enum values to display type names.
+ * Used by _getRecordFieldTypes to extract type info from record metadata.
+ */
+var _DATA_TYPE_NAMES = {
+  0: "Integer",
+  1: "Long Integer",
+  2: "Decimal",
+  3: "Currency",
+  4: "Text",
+  5: "Phone Number",
+  6: "Email",
+  7: "Boolean",
+  8: "Date",
+  9: "Date Time",
+  10: "Time",
+};
+
+/**
+ * Extract field-name-to-type mappings from a record instance's constructor.
+ * Uses the attributesToDeclare pattern to capture field metadata.
+ *
+ * @param {Object} recordInstance - An OS reactive record instance
+ * @returns {Object} Map of internalName → OS type name (e.g. { decimalAttr: "Decimal" })
+ */
+function _getRecordFieldTypes(recordInstance) {
+  var typeMap = {};
+  try {
+    var ctor = recordInstance && recordInstance.constructor;
+    if (!ctor || typeof ctor.attributesToDeclare !== "function") return typeMap;
+
+    var captured = [];
+    var mockThis = {
+      attr: function () {
+        captured.push(Array.from(arguments));
+        return null;
+      }
+    };
+
+    try {
+      ctor.attributesToDeclare.call(mockThis);
+    } catch (_) {
+      // Expected: _super.attributesToDeclare.call(this) fails in mock context
+      // but we've already captured the current record's attrs
+    }
+
+    for (var i = 0; i < captured.length; i++) {
+      var args = captured[i];
+      var internalName = args[1];
+      var typeEnum = args[5];
+      var typeName = _DATA_TYPE_NAMES[typeEnum];
+      if (internalName && typeName !== undefined) {
+        typeMap[internalName] = typeName;
+      }
+    }
+  } catch (_) {}
+  return typeMap;
+}
+
+/**
  * Recursively introspect a reactive model value.
  * Detects lists (.count + .get or .length + .getItem), records, and primitives.
  *
@@ -533,9 +592,10 @@ function _listGet(list, index) {
  * @param {string} key - The property key name
  * @param {number} depth - Current recursion depth
  * @param {number} maxListItems - Max list items to enumerate
+ * @param {string} [typeHint] - Optional OS type name from parent record metadata
  * @returns {Object} Tree node: { kind, key, ... }
  */
-function _introspectValue(value, key, depth, maxListItems) {
+function _introspectValue(value, key, depth, maxListItems, typeHint) {
   const MAX_DEPTH = 10;
 
   // Null / undefined
@@ -550,27 +610,27 @@ function _introspectValue(value, key, depth, maxListItems) {
 
   // Primitive JS types
   if (typeof value !== "object" && typeof value !== "function") {
-    return { kind: "primitive", key, value: value, type: typeof value };
+    return { kind: "primitive", key, value: value, type: typeHint || typeof value };
   }
 
   // Date objects (native or OS DateTime wrapper with .getTime())
   if (value instanceof Date) {
-    return { kind: "primitive", key, value: value.toISOString(), type: "Date Time" };
+    return { kind: "primitive", key, value: value.toISOString(), type: typeHint || "Date Time" };
   }
   // OutSystems DateTime wrapper: has .getTime() and date-part getters (year/month/day)
   if (typeof value.getTime === "function") {
     try {
       const ts = value.getTime();
       if (!isNaN(ts)) {
-        return { kind: "primitive", key, value: new Date(ts).toISOString(), type: "Date Time" };
+        return { kind: "primitive", key, value: new Date(ts).toISOString(), type: typeHint || "Date Time" };
       }
     } catch (_) { /* fall through */ }
   }
 
-  // OutSystems LongInteger wrapper: has own .internalValue property
+  // OutSystems numeric wrapper (Decimal, Currency, LongInteger): has own .internalValue property
   if (value.hasOwnProperty("internalValue") && typeof value.toString === "function") {
     try {
-      return { kind: "primitive", key, value: String(value), type: "Long Integer" };
+      return { kind: "primitive", key, value: _safeSerialize(value), type: typeHint || "Long Integer" };
     } catch (_) { /* fall through */ }
   }
 
@@ -581,9 +641,9 @@ function _introspectValue(value, key, depth, maxListItems) {
     // Named constructor check (non-minified builds)
     if (value.constructor && /^(Decimal|Currency|Long Integer)/.test(value.constructor.name || "")) {
       try {
-        return { kind: "primitive", key, value: Number(value), type: value.constructor.name };
+        return { kind: "primitive", key, value: Number(value), type: typeHint || value.constructor.name };
       } catch (e) {
-        return { kind: "primitive", key, value: String(value), type: "number" };
+        return { kind: "primitive", key, value: String(value), type: typeHint || "number" };
       }
     }
   }
@@ -623,6 +683,9 @@ function _introspectValue(value, key, depth, maxListItems) {
       "isPrototypeOf", "propertyIsEnumerable", "__defineGetter__", "__defineSetter__",
       "__lookupGetter__", "__lookupSetter__", "__proto__"]);
 
+    // Try to get attribute type metadata from the record's constructor
+    const attrTypes = _getRecordFieldTypes(value);
+
     // Walk prototype chain to find getter properties (reactive model pattern)
     let obj = proto;
     while (obj && obj !== Object.prototype) {
@@ -636,7 +699,7 @@ function _introspectValue(value, key, depth, maxListItems) {
           seen.add(propName);
           try {
             const propVal = value[propName];
-            fields.push(_introspectValue(propVal, propName, depth + 1, maxListItems));
+            fields.push(_introspectValue(propVal, propName, depth + 1, maxListItems, attrTypes[propName]));
           } catch (e) {
             fields.push({ kind: "primitive", key: propName, value: "[error: " + e.message + "]", type: "error" });
           }
@@ -655,7 +718,7 @@ function _introspectValue(value, key, depth, maxListItems) {
         seen.add(propName);
         try {
           const propVal = value[propName];
-          fields.push(_introspectValue(propVal, propName, depth + 1, maxListItems));
+          fields.push(_introspectValue(propVal, propName, depth + 1, maxListItems, attrTypes[propName]));
         } catch (e) {
           fields.push({ kind: "primitive", key: propName, value: "[error: " + e.message + "]", type: "error" });
         }
