@@ -21,7 +21,7 @@ export async function fetchScreens(pageUrl) {
   }
 
   const moduleName = pathParts[0];
-  const moduleInfoUrl = `${url.origin}/${moduleName}/moduleservices/moduleinfo`;
+  const moduleInfoUrl = `${url.origin}/${moduleName}/moduleservices/moduleinfo?${Date.now()}`;
   const currentScreen = pathParts.length > 1 ? pathParts[1] : "";
 
   let response;
@@ -102,7 +102,7 @@ export async function fetchRoles(pageUrl) {
   const moduleName = pathParts[0];
   // Convert module name to the controller script format
   const controllerFileName = moduleName.charAt(0).toUpperCase() + moduleName.slice(1).toLowerCase() + ".controller.js";
-  const controllerUrl = `${url.origin}/${moduleName}/scripts/${controllerFileName}`;
+  const controllerUrl = `${url.origin}/${moduleName}/scripts/${controllerFileName}?${Date.now()}`;
 
   let response;
   try {
@@ -151,7 +151,7 @@ export async function fetchRoles(pageUrl) {
 /* ------------------------------------------------------------------ */
 export async function fetchScreenDetails(baseUrl, moduleName, flow, screenName) {
   // Construct the MVC file URL: {baseUrl}/scripts/{Module}.{Flow}.{Screen}.mvc.js
-  const mvcUrl = `${baseUrl}/scripts/${moduleName}.${flow}.${screenName}.mvc.js`;
+  const mvcUrl = `${baseUrl}/scripts/${moduleName}.${flow}.${screenName}.mvc.js?${Date.now()}`;
 
   let response;
   try {
