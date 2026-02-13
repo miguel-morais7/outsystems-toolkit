@@ -845,16 +845,21 @@ function _osScreenVarListAppend(internalName, path, maxListItems) {
       return { ok: false, error: "Target is not a list." };
     }
 
-    // Create a new default record
+    // Create a new default item.
+    // IMPORTANT: Use `=== null` checks (not truthiness) because primitive
+    // list items like "" or 0 are valid but falsy.
     let newItem = null;
+    const listLen = _listCount(list);
 
     // Strategy 1: Use list.getEmptyListItem() — the OS runtime's built-in template
     if (typeof list.getEmptyListItem === "function") {
       try {
         const template = list.getEmptyListItem();
-        if (template) {
-          // Clone the template if it has a clone method, otherwise use the constructor
-          if (typeof template.clone === "function") {
+        if (template !== null && template !== undefined) {
+          if (typeof template !== "object" && typeof template !== "function") {
+            // Primitive value (string, number, boolean) — use directly
+            newItem = template;
+          } else if (typeof template.clone === "function") {
             newItem = template.clone();
           } else if (template.constructor && template.constructor !== Object) {
             newItem = new template.constructor();
@@ -866,38 +871,41 @@ function _osScreenVarListAppend(internalName, path, maxListItems) {
     }
 
     // Strategy 2: Use the emptyListItem property directly
-    if (!newItem && list.emptyListItem) {
+    if (newItem === null) {
       try {
         const template = list.emptyListItem;
-        if (typeof template.clone === "function") {
-          newItem = template.clone();
-        } else if (template.constructor && template.constructor !== Object) {
-          newItem = new template.constructor();
-        } else {
-          newItem = template;
+        if (template !== null && template !== undefined) {
+          if (typeof template !== "object" && typeof template !== "function") {
+            newItem = template;
+          } else if (typeof template.clone === "function") {
+            newItem = template.clone();
+          } else if (template.constructor && template.constructor !== Object) {
+            newItem = new template.constructor();
+          } else {
+            newItem = template;
+          }
         }
       } catch (_) { /* fall through */ }
     }
 
-    // Strategy 3: Use the constructor of an existing item
-    const listLen = _listCount(list);
-    if (!newItem && listLen > 0) {
+    // Strategy 3: Use the constructor of an existing item (objects only)
+    if (newItem === null && listLen > 0) {
       try {
         const sample = _listGet(list, 0);
-        if (sample && sample.constructor && sample.constructor !== Object) {
+        if (sample !== null && typeof sample === "object" &&
+            sample.constructor && sample.constructor !== Object) {
           newItem = new sample.constructor();
         }
       } catch (_) { /* fall through */ }
     }
 
-    // Strategy 4: For primitive lists, push a default value
-    if (!newItem && listLen > 0) {
+    // Strategy 4: For primitive lists, infer a default from an existing item
+    if (newItem === null && listLen > 0) {
       try {
         const sample = _listGet(list, 0);
         if (sample === null || sample === undefined || typeof sample !== "object") {
           if (typeof sample === "boolean") newItem = false;
           else if (typeof sample === "number") newItem = 0;
-          else if (typeof sample === "string") newItem = "";
           else newItem = "";
         }
       } catch (_) { /* fall through */ }
