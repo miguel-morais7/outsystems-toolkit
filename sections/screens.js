@@ -8,8 +8,9 @@
  * and can be edited inline.
  */
 
-import { esc, escAttr, debounce, sendMessage } from '../utils/helpers.js';
+import { esc, escAttr, debounce, sendMessage, formatDateForInput } from '../utils/helpers.js';
 import { show, hide, flashRow, toast } from '../utils/ui.js';
+import { initPopupListeners, openVarPopup } from './screenVarPopup.js';
 
 /* ================================================================== */
 /*  State                                                              */
@@ -47,6 +48,14 @@ export function init() {
   inputSearch.addEventListener("input", debounce(render, 150));
 
   screenList.addEventListener("click", (e) => {
+    // Inspect popup icon for complex types
+    const popupBtn = e.target.closest(".btn-var-popup");
+    if (popupBtn) {
+      e.stopPropagation();
+      openVarPopup(popupBtn.dataset.internalName, popupBtn.dataset.name, popupBtn.dataset.type);
+      return;
+    }
+
     // Navigate button
     const navBtn = e.target.closest(".btn-navigate");
     if (navBtn) {
@@ -119,6 +128,9 @@ export function init() {
       commitScreenVarInput(input);
     }
   });
+
+  /* ---- Popup event listeners (delegated to screenVarPopup module) ---- */
+  initPopupListeners(document.getElementById("var-popup-overlay"));
 }
 
 /** Replace section data after a scan. */
@@ -359,9 +371,23 @@ function buildScreenVarItem(v, isCurrent) {
              ${isReadOnly ? "readonly" : ""}
              ${v.type === "Time" ? 'step="1"' : ""}
              title="${isReadOnly ? "Read-only" : "Edit to save"}" />`;
+  } else if (isReadOnly) {
+    // Complex types — show inspect icon instead of read-only input
+    valueControl = `
+      <button class="btn-icon btn-var-popup"
+              data-internal-name="${escAttr(v.internalName)}"
+              data-type="${esc(v.type)}"
+              data-name="${escAttr(v.name)}"
+              title="Inspect ${esc(v.name)}">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 3h6v6"/>
+          <path d="M10 14L21 3"/>
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+        </svg>
+      </button>`;
   } else {
-    const displayValue = isReadOnly ? ("[" + v.type + "]") :
-      (v.value === null ? "" : String(v.value));
+    const displayValue = v.value === null ? "" : String(v.value);
     valueControl = `
       <input class="var-value screen-var-input"
              type="text"
@@ -369,50 +395,18 @@ function buildScreenVarItem(v, isCurrent) {
              data-internal-name="${escAttr(v.internalName)}"
              data-type="${esc(v.type)}"
              data-original="${escAttr(displayValue)}"
-             ${isReadOnly ? "readonly" : ""}
-             title="${isReadOnly ? "Read-only (" + v.type + ")" : "Press Enter to save"}" />`;
+             title="Press Enter to save" />`;
   }
 
   return `<div class="screen-detail-item screen-var-row" data-internal-name="${escAttr(v.internalName)}">
     <div class="screen-var-info">
       <span class="screen-detail-name">${esc(v.name)}</span>
-      <span class="screen-detail-type">${esc(v.type)}${isReadOnly ? " · read-only" : ""}</span>
+      <span class="screen-detail-type">${esc(v.type)}</span>
     </div>
     <div class="screen-var-value-wrap">
       ${valueControl}
     </div>
   </div>`;
-}
-
-/**
- * Convert an ISO date string to the format required by HTML date/time inputs.
- */
-function formatDateForInput(isoString, type) {
-  if (!isoString) return "";
-  try {
-    const d = new Date(isoString);
-    if (isNaN(d.getTime())) return "";
-    if (type === "Date") {
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, "0");
-      const day = String(d.getDate()).padStart(2, "0");
-      return `${y}-${m}-${day}`;
-    } else if (type === "Time") {
-      const h = String(d.getHours()).padStart(2, "0");
-      const min = String(d.getMinutes()).padStart(2, "0");
-      const s = String(d.getSeconds()).padStart(2, "0");
-      return `${h}:${min}:${s}`;
-    } else {
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, "0");
-      const day = String(d.getDate()).padStart(2, "0");
-      const h = String(d.getHours()).padStart(2, "0");
-      const min = String(d.getMinutes()).padStart(2, "0");
-      return `${y}-${m}-${day}T${h}:${min}`;
-    }
-  } catch {
-    return "";
-  }
 }
 
 /** Send a SET_SCREEN_VAR message and handle the response. */
@@ -610,3 +604,4 @@ async function fetchLiveValues(details) {
     console.warn("[Screens] Failed to fetch live values:", e.message);
   }
 }
+

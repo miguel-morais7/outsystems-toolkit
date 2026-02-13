@@ -994,3 +994,343 @@ body {
   word-break: break-all;
   text-align: right;
 }
+
+/* ------------------------------------------------------------------ */
+/*  VARIABLE INSPECT POPUP                                             */
+/* ------------------------------------------------------------------ */
+
+/* Inspect icon button in screen var rows */
+.btn-var-popup {
+  opacity: 0.4;
+  transition: opacity var(--transition), color var(--transition);
+}
+
+.screen-detail-item:hover .btn-var-popup,
+.btn-var-popup:focus {
+  opacity: 1;
+}
+
+.btn-var-popup:hover {
+  color: var(--os-red);
+  background: var(--bg-hover);
+}
+
+/* Overlay backdrop */
+.var-popup-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(26, 26, 46, 0.5);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: popup-fade-in 0.15s ease;
+}
+
+@keyframes popup-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Modal panel */
+.var-popup {
+  background: var(--bg-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  width: 100%;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: popup-slide-in 0.2s ease;
+}
+
+@keyframes popup-slide-in {
+  from { transform: translateY(12px) scale(0.97); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.var-popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(135deg, #ec6b5e 0%, #e43e2b 100%);
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.var-popup-header-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.var-popup-title {
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.var-popup-subtitle {
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.8;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.var-popup-close {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.var-popup-close:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.var-popup-body {
+  padding: 12px 16px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.var-popup-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 24px 0;
+}
+
+.var-popup-error {
+  color: #991b1b;
+  font-size: 13px;
+  padding: 12px;
+  background: #fef2f2;
+  border-radius: var(--radius-sm);
+}
+
+/* ------------------------------------------------------------------ */
+/*  TREE VIEW                                                          */
+/* ------------------------------------------------------------------ */
+
+.var-tree {
+  font-size: 13px;
+  font-family: var(--font-mono);
+}
+
+.var-tree-node {
+  margin-left: 12px;
+  padding-left: 10px;
+  border-left: 1px solid var(--border);
+}
+
+.var-tree-node.var-tree-root {
+  margin-left: 0;
+  padding-left: 0;
+  border-left: none;
+}
+
+.var-tree-header {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 4px;
+  border-radius: var(--radius-sm);
+  user-select: none;
+  transition: background var(--transition);
+}
+
+.var-tree-header:hover {
+  background: var(--bg-hover);
+}
+
+.var-tree-chevron {
+  transition: transform var(--transition);
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.var-tree-header.collapsed .var-tree-chevron {
+  transform: rotate(-90deg);
+}
+
+.var-tree-key {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.var-tree-badge {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 400;
+  margin-left: 4px;
+}
+
+.var-tree-children {
+  overflow: hidden;
+}
+
+.var-tree-children.collapsed {
+  display: none;
+}
+
+/* Leaf (primitive value) */
+.var-tree-leaf {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 4px;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition);
+}
+
+.var-tree-leaf:hover {
+  background: var(--bg-hover);
+}
+
+.var-tree-leaf-name {
+  color: var(--text-secondary);
+  font-weight: 500;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.var-tree-leaf-input {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 2px 6px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  outline: none;
+  min-width: 50px;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.var-tree-leaf-input:focus {
+  border-color: var(--os-red);
+  box-shadow: 0 0 0 2px rgba(228, 62, 43, 0.15);
+  background: var(--bg-input);
+}
+
+.var-tree-leaf-type {
+  font-size: 9px;
+  color: var(--os-red-dark);
+  background: rgba(228, 62, 43, 0.1);
+  padding: 1px 5px;
+  border-radius: 8px;
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* Flash feedback for tree leaf edits */
+.var-tree-leaf.saved {
+  animation: flash-green 0.6s ease;
+}
+
+.var-tree-leaf.error {
+  animation: flash-red 0.6s ease;
+}
+
+/* Boolean toggle in tree */
+.var-tree-leaf .bool-toggle {
+  width: 28px;
+  height: 16px;
+}
+
+.var-tree-leaf .bool-toggle .knob {
+  width: 12px;
+  height: 12px;
+}
+
+.var-tree-leaf .bool-toggle.active .knob {
+  transform: translateX(12px);
+}
+
+/* ------------------------------------------------------------------ */
+/*  LIST ITEM WRAPPER & MUTATION BUTTONS                                */
+/* ------------------------------------------------------------------ */
+
+.var-tree-list-item {
+  position: relative;
+}
+
+.btn-list-delete {
+  display: none;
+  position: absolute;
+  right: 4px;
+  top: 4px;
+  z-index: 1;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: none;
+  background: rgba(153, 27, 27, 0.1);
+  color: #991b1b;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  padding: 0;
+  transition: background var(--transition), color var(--transition), transform var(--transition);
+}
+
+.var-tree-list-item:hover > .btn-list-delete {
+  display: inline-flex;
+}
+
+.btn-list-delete:hover {
+  background: #991b1b;
+  color: #fff;
+  transform: scale(1.1);
+}
+
+.btn-list-append {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  margin: 4px 0 2px 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition);
+  width: 100%;
+}
+
+.btn-list-append:hover {
+  color: var(--os-red);
+  border-color: var(--os-red);
+  background: rgba(228, 62, 43, 0.05);
+}
+
+.btn-list-append:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
