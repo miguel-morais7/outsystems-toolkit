@@ -1331,7 +1331,8 @@ function _osScreenActionInvoke(methodName, paramValues) {
         var complexKey = methodName + "." + pv.attrName;
         var complexVal = window.__osActionParams[complexKey];
         if (complexVal !== undefined && complexVal !== null) {
-          coercedArgs.push(complexVal);
+          // Clone so the stored value survives runtime mutation and can be re-invoked
+          coercedArgs.push(typeof complexVal.clone === "function" ? complexVal.clone() : complexVal);
           continue;
         }
         // Auto-create a default instance for uninitialized complex params
@@ -1355,9 +1356,6 @@ function _osScreenActionInvoke(methodName, paramValues) {
 
     // Invoke the action
     var result = ctrl[methodName].apply(ctrl, coercedArgs);
-
-    // Clean up temp action params for this method
-    _cleanupActionParams(methodName);
 
     // Handle promise results (async actions)
     if (result && typeof result.then === "function") {
@@ -1477,6 +1475,13 @@ function _osActionParamInit(methodName, attrName, maxListItems) {
 
     if (!targetAttr) {
       return { ok: false, error: "Attribute '" + attrName + "' not found in variable group." };
+    }
+
+    // If a value was already stored (from a previous edit), reuse it
+    var existingKey = methodName + "." + attrName;
+    if (window.__osActionParams[existingKey] !== undefined && window.__osActionParams[existingKey] !== null) {
+      var tree = _introspectValue(window.__osActionParams[existingKey], attrName, 0, maxListItems || 50);
+      return { ok: true, tree: tree };
     }
 
     // Create a default instance
