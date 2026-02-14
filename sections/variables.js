@@ -5,8 +5,9 @@
  * for the Client Variables panel.
  */
 
-import { esc, escAttr, debounce, sendMessage, formatDateForInput } from '../utils/helpers.js';
+import { esc, escAttr, debounce, sendMessage } from '../utils/helpers.js';
 import { show, hide, flashRow, toast } from '../utils/ui.js';
+import { buildTypeControl } from '../utils/typeControls.js';
 
 /* ================================================================== */
 /*  State                                                              */
@@ -184,43 +185,19 @@ export function render() {
 
 function buildVarRow(v) {
   const id = `${v.module}__${v.name}`;
-  let valueControl;
+  const moduleAttr = `data-module="${escAttr(v.module)}"`;
 
-  if (v.type === "Boolean" && !v.readOnly) {
-    const active = v.value === true || v.value === "true" || v.value === "True";
-    valueControl = `
-      <button class="bool-toggle ${active ? "active" : ""}"
-              data-module="${esc(v.module)}" data-name="${esc(v.name)}" data-type="Boolean"
-              ${v.readOnly ? "disabled" : ""}>
-        <span class="knob"></span>
-      </button>`;
-  } else if (v.type === "Date" || v.type === "Time" || v.type === "Date Time") {
-    const inputType = v.type === "Date" ? "date" : v.type === "Time" ? "time" : "datetime-local";
-    const displayValue = formatDateForInput(v.value, v.type);
-    valueControl = `
-      <input class="var-value var-value-date"
-             type="${inputType}"
-             value="${escAttr(displayValue)}"
-             data-module="${esc(v.module)}"
-             data-name="${esc(v.name)}"
-             data-type="${esc(v.type)}"
-             data-original="${escAttr(displayValue)}"
-             ${v.readOnly ? "readonly" : ""}
-             ${v.type === "Time" ? 'step="1"' : ""}
-             title="${v.readOnly ? "Read-only" : "Edit to save"}" />`;
-  } else {
-    const displayValue = v.value === null ? "" : String(v.value);
-    valueControl = `
-      <input class="var-value"
-             type="text"
-             value="${escAttr(displayValue)}"
-             data-module="${esc(v.module)}"
-             data-name="${esc(v.name)}"
-             data-type="${esc(v.type)}"
-             data-original="${escAttr(displayValue)}"
-             ${v.readOnly ? "readonly" : ""}
-             title="${v.readOnly ? "Read-only" : "Press Enter to save"}" />`;
-  }
+  const valueControl = buildTypeControl({
+    dataType: v.type,
+    value: v.value,
+    identifier: v.name,
+    identifierAttr: "data-name",
+    inputClass: "",
+    toggleClass: "",
+    name: v.name,
+    isReadOnly: v.readOnly,
+    extraAttrs: moduleAttr,
+  });
 
   return `
     <div class="var-row" data-id="${esc(id)}">

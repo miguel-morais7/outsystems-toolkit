@@ -5,6 +5,9 @@
  * MAIN world.  Receives action messages from sidepanel.js, injects the
  * appropriate function into the active tab via chrome.scripting.executeScript,
  * and returns the result.
+ *
+ * Uses a dispatch table to map message actions to page-script functions,
+ * eliminating repetitive handler boilerplate.
  */
 
 import { fetchScreens, fetchRoles, fetchScreenDetails } from './background/parsers.js';
@@ -15,153 +18,9 @@ import { fetchScreens, fetchRoles, fetchScreenDetails } from './background/parse
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 
 /* ------------------------------------------------------------------ */
-/*  Message handler                                                    */
+/*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.action === "SCAN") {
-    handleScan().then(sendResponse).catch((err) =>
-      sendResponse({ ok: false, error: err.message })
-    );
-    return true; // keep the message channel open for async response
-  }
 
-  if (message.action === "SET") {
-    handleSet(message.module, message.name, message.value, message.type)
-      .then(sendResponse)
-      .catch((err) => sendResponse({ ok: false, error: err.message }));
-    return true;
-  }
-
-  if (message.action === "GET") {
-    handleGet(message.module, message.name)
-      .then(sendResponse)
-      .catch((err) => sendResponse({ ok: false, error: err.message }));
-    return true;
-  }
-
-  if (message.action === "FETCH_SCREENS") {
-    getActiveTab().then(tab => fetchScreens(tab.url))
-      .then(sendResponse)
-      .catch((err) => sendResponse({ ok: false, error: err.message }));
-    return true;
-  }
-
-  if (message.action === "NAVIGATE") {
-    handleNavigate(message.url)
-      .then(sendResponse)
-      .catch((err) => sendResponse({ ok: false, error: err.message }));
-    return true;
-  }
-
-  if (message.action === "FETCH_ROLES") {
-    getActiveTab().then(tab => fetchRoles(tab.url))
-      .then(sendResponse)
-      .catch((err) => sendResponse({ ok: false, error: err.message }));
-    return true;
-  }
-
-  if (message.action === "FETCH_SCREEN_DETAILS") {
-    fetchScreenDetails(message.baseUrl, message.moduleName, message.flow, message.screenName)
-      .then(sendResponse)
-      .catch((err) => sendResponse({ ok: false, error: err.message }));
-    return true;
-  }
-
-  if (message.action === "GET_SCREEN_VARS") {
-    handleGetScreenVars(message.varDefs)
-      .then(sendResponse)
-      .catch((err) => sendResponse({ ok: false, error: err.message }));
-    return true;
-  }
-
-  if (message.action === "SET_SCREEN_VAR") {
-    handleSetScreenVar(message.internalName, message.value, message.dataType)
-      .then(sendResponse)
-      .catch((err) => sendResponse({ ok: false, error: err.message }));
-    return true;
-  }
-
-  if (message.action === "INTROSPECT_SCREEN_VAR") {
-    handleIntrospectScreenVar(message.internalName, message.maxListItems)
-      .then(sendResponse)
-      .catch((err) => sendResponse({ ok: false, error: err.message }));
-    return true;
-  }
-
-  if (message.action === "SET_SCREEN_VAR_DEEP") {
-    handleSetScreenVarDeep(message.internalName, message.path, message.value, message.dataType)
-      .then(sendResponse)
-      .catch((err) => sendResponse({ ok: false, error: err.message }));
-    return true;
-  }
-
-  if (message.action === "LIST_APPEND") {
-    handleListAppend(message.internalName, message.path, message.maxListItems)
-      .then(sendResponse)
-      .catch((err) => sendResponse({ ok: false, error: err.message }));
-    return true;
-  }
-
-  if (message.action === "LIST_DELETE") {
-    handleListDelete(message.internalName, message.path, message.index, message.maxListItems)
-      .then(sendResponse)
-      .catch((err) => sendResponse({ ok: false, error: err.message }));
-    return true;
-  }
-
-  if (message.action === "GET_SCREEN_ACTIONS") {
-    handleGetScreenActions()
-      .then(sendResponse)
-      .catch((err) => sendResponse({ ok: false, error: err.message }));
-    return true;
-  }
-
-  if (message.action === "INVOKE_SCREEN_ACTION") {
-    handleInvokeScreenAction(message.methodName, message.paramValues)
-      .then(sendResponse)
-      .catch((err) => sendResponse({ ok: false, error: err.message }));
-    return true;
-  }
-
-  if (message.action === "INIT_ACTION_PARAM") {
-    handleInitActionParam(message.methodName, message.attrName, message.maxListItems)
-      .then(sendResponse)
-      .catch((err) => sendResponse({ ok: false, error: err.message }));
-    return true;
-  }
-
-  if (message.action === "INTROSPECT_ACTION_PARAM") {
-    handleIntrospectActionParam(message.methodName, message.attrName, message.maxListItems)
-      .then(sendResponse)
-      .catch((err) => sendResponse({ ok: false, error: err.message }));
-    return true;
-  }
-
-  if (message.action === "SET_ACTION_PARAM_DEEP") {
-    handleSetActionParamDeep(message.methodName, message.attrName, message.path, message.value, message.dataType)
-      .then(sendResponse)
-      .catch((err) => sendResponse({ ok: false, error: err.message }));
-    return true;
-  }
-
-  if (message.action === "ACTION_PARAM_LIST_APPEND") {
-    handleActionParamListAppend(message.methodName, message.attrName, message.path, message.maxListItems)
-      .then(sendResponse)
-      .catch((err) => sendResponse({ ok: false, error: err.message }));
-    return true;
-  }
-
-  if (message.action === "ACTION_PARAM_LIST_DELETE") {
-    handleActionParamListDelete(message.methodName, message.attrName, message.path, message.index, message.maxListItems)
-      .then(sendResponse)
-      .catch((err) => sendResponse({ ok: false, error: err.message }));
-    return true;
-  }
-});
-
-/* ------------------------------------------------------------------ */
-/*  Helpers — get the active tab                                       */
-/* ------------------------------------------------------------------ */
 async function getActiveTab() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab) throw new Error("No active tab found.");
@@ -179,8 +38,11 @@ function extractScriptResult(results) {
 }
 
 /**
- * Inject pageScript.js helpers into the page (idempotent — we check
+ * Inject pageScript helpers into the page (idempotent — we check
  * whether _osClientVarsScan is already defined).
+ *
+ * Files are injected in dependency order: helpers and fiber first,
+ * then feature modules that depend on them.
  */
 async function ensurePageScriptInjected(tabId) {
   const results = await chrome.scripting.executeScript({
@@ -193,22 +55,31 @@ async function ensurePageScriptInjected(tabId) {
     await chrome.scripting.executeScript({
       target: { tabId },
       world: "MAIN",
-      files: ["pageScript.js"],
+      files: [
+        "pageScript/helpers.js",
+        "pageScript/fiber.js",
+        "pageScript/clientVars.js",
+        "pageScript/screenVars.js",
+        "pageScript/screenActions.js",
+        "pageScript/actionParams.js",
+      ],
     });
   }
 }
 
-/* ------------------------------------------------------------------ */
-/*  SCAN                                                               */
-/* ------------------------------------------------------------------ */
-async function handleScan() {
+/**
+ * Execute a function in the page's MAIN world and return the result.
+ * Handles injection, execution, and error wrapping.
+ */
+async function executeInPage(func, args = []) {
   const tab = await getActiveTab();
   await ensurePageScriptInjected(tab.id);
 
   const results = await chrome.scripting.executeScript({
     target: { tabId: tab.id },
     world: "MAIN",
-    func: () => _osClientVarsScan(),
+    func,
+    args,
   });
 
   const data = extractScriptResult(results);
@@ -219,318 +90,69 @@ async function handleScan() {
 }
 
 /* ------------------------------------------------------------------ */
-/*  SET                                                                */
+/*  Dispatch tables                                                    */
 /* ------------------------------------------------------------------ */
-async function handleSet(moduleName, varName, value, varType) {
-  const tab = await getActiveTab();
-  await ensurePageScriptInjected(tab.id);
 
-  const results = await chrome.scripting.executeScript({
-    target: { tabId: tab.id },
-    world: "MAIN",
-    func: (m, n, v, t) => _osClientVarsSet(m, n, v, t),
-    args: [moduleName, varName, value, varType],
-  });
+/**
+ * Actions that execute a function in the page's MAIN world.
+ * Each entry maps an action name to:
+ *   - func: the function to execute in the page context
+ *   - args: extracts arguments from the incoming message
+ */
+const PAGE_ACTIONS = {
+  SCAN:                     { func: () => _osClientVarsScan(),                                            args: () => [] },
+  SET:                      { func: (m, n, v, t) => _osClientVarsSet(m, n, v, t),                         args: msg => [msg.module, msg.name, msg.value, msg.type] },
+  GET:                      { func: (m, n) => _osClientVarsGet(m, n),                                     args: msg => [msg.module, msg.name] },
+  GET_SCREEN_VARS:          { func: (defs) => _osScreenVarsGet(defs),                                     args: msg => [msg.varDefs] },
+  SET_SCREEN_VAR:           { func: (n, v, t) => _osScreenVarsSet(n, v, t),                               args: msg => [msg.internalName, msg.value, msg.dataType] },
+  INTROSPECT_SCREEN_VAR:    { func: (n, m) => _osScreenVarIntrospect(n, m),                               args: msg => [msg.internalName, msg.maxListItems || 50] },
+  SET_SCREEN_VAR_DEEP:      { func: (n, p, v, t) => _osScreenVarDeepSet(n, p, v, t),                     args: msg => [msg.internalName, msg.path, msg.value, msg.dataType] },
+  LIST_APPEND:              { func: (n, p, m) => _osScreenVarListAppend(n, p, m),                         args: msg => [msg.internalName, msg.path || [], msg.maxListItems || 50] },
+  LIST_DELETE:              { func: (n, p, i, m) => _osScreenVarListDelete(n, p, i, m),                   args: msg => [msg.internalName, msg.path || [], msg.index, msg.maxListItems || 50] },
+  GET_SCREEN_ACTIONS:       { func: () => _osScreenActionsGet(),                                           args: () => [] },
+  INVOKE_SCREEN_ACTION:     { func: (m, p) => _osScreenActionInvoke(m, p),                                args: msg => [msg.methodName, msg.paramValues || []] },
+  INIT_ACTION_PARAM:        { func: (m, a, mx) => _osActionParamInit(m, a, mx),                           args: msg => [msg.methodName, msg.attrName, msg.maxListItems || 50] },
+  INTROSPECT_ACTION_PARAM:  { func: (m, a, mx) => _osActionParamIntrospect(m, a, mx),                     args: msg => [msg.methodName, msg.attrName, msg.maxListItems || 50] },
+  SET_ACTION_PARAM_DEEP:    { func: (m, a, p, v, t) => _osActionParamDeepSet(m, a, p, v, t),             args: msg => [msg.methodName, msg.attrName, msg.path, msg.value, msg.dataType] },
+  ACTION_PARAM_LIST_APPEND: { func: (m, a, p, mx) => _osActionParamListAppend(m, a, p, mx),               args: msg => [msg.methodName, msg.attrName, msg.path || [], msg.maxListItems || 50] },
+  ACTION_PARAM_LIST_DELETE:  { func: (m, a, p, i, mx) => _osActionParamListDelete(m, a, p, i, mx),        args: msg => [msg.methodName, msg.attrName, msg.path || [], msg.index, msg.maxListItems || 50] },
+};
 
-  const data = extractScriptResult(results);
-  if (data === undefined) {
-    return { ok: false, error: "Could not access page — is it a restricted URL?" };
+/**
+ * Actions handled outside the page context (fetch/parse, navigation).
+ * Each entry returns a Promise.
+ */
+const SPECIAL_ACTIONS = {
+  FETCH_SCREENS:        () => getActiveTab().then(tab => fetchScreens(tab.url)),
+  FETCH_ROLES:          () => getActiveTab().then(tab => fetchRoles(tab.url)),
+  FETCH_SCREEN_DETAILS: msg => fetchScreenDetails(msg.baseUrl, msg.moduleName, msg.flow, msg.screenName),
+  NAVIGATE:             msg => handleNavigate(msg.url),
+};
+
+/* ------------------------------------------------------------------ */
+/*  Message handler                                                    */
+/* ------------------------------------------------------------------ */
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  const { action } = message;
+
+  // Page-execution actions (inject + run in MAIN world)
+  const pageAction = PAGE_ACTIONS[action];
+  if (pageAction) {
+    executeInPage(pageAction.func, pageAction.args(message))
+      .then(sendResponse)
+      .catch(err => sendResponse({ ok: false, error: err.message }));
+    return true;
   }
-  return data;
-}
 
-/* ------------------------------------------------------------------ */
-/*  GET (refresh single)                                               */
-/* ------------------------------------------------------------------ */
-async function handleGet(moduleName, varName) {
-  const tab = await getActiveTab();
-  await ensurePageScriptInjected(tab.id);
-
-  const results = await chrome.scripting.executeScript({
-    target: { tabId: tab.id },
-    world: "MAIN",
-    func: (m, n) => _osClientVarsGet(m, n),
-    args: [moduleName, varName],
-  });
-
-  const data = extractScriptResult(results);
-  if (data === undefined) {
-    return { ok: false, error: "Could not access page — is it a restricted URL?" };
+  // Special handlers (fetch/parse, navigation)
+  const specialHandler = SPECIAL_ACTIONS[action];
+  if (specialHandler) {
+    specialHandler(message)
+      .then(sendResponse)
+      .catch(err => sendResponse({ ok: false, error: err.message }));
+    return true;
   }
-  return data;
-}
-
-/* ------------------------------------------------------------------ */
-/*  GET SCREEN VARS (live runtime values via React fiber)              */
-/* ------------------------------------------------------------------ */
-async function handleGetScreenVars(varDefs) {
-  const tab = await getActiveTab();
-  await ensurePageScriptInjected(tab.id);
-
-  const results = await chrome.scripting.executeScript({
-    target: { tabId: tab.id },
-    world: "MAIN",
-    func: (defs) => _osScreenVarsGet(defs),
-    args: [varDefs],
-  });
-
-  const data = extractScriptResult(results);
-  if (data === undefined) {
-    return { ok: false, error: "Could not access page — is it a restricted URL?" };
-  }
-  return data;
-}
-
-/* ------------------------------------------------------------------ */
-/*  SET SCREEN VAR (write a value via React fiber)                     */
-/* ------------------------------------------------------------------ */
-async function handleSetScreenVar(internalName, value, dataType) {
-  const tab = await getActiveTab();
-  await ensurePageScriptInjected(tab.id);
-
-  const results = await chrome.scripting.executeScript({
-    target: { tabId: tab.id },
-    world: "MAIN",
-    func: (name, val, type) => _osScreenVarsSet(name, val, type),
-    args: [internalName, value, dataType],
-  });
-
-  const data = extractScriptResult(results);
-  if (data === undefined) {
-    return { ok: false, error: "Could not access page — is it a restricted URL?" };
-  }
-  return data;
-}
-
-/* ------------------------------------------------------------------ */
-/*  INTROSPECT SCREEN VAR (deep-read complex variable structure)       */
-/* ------------------------------------------------------------------ */
-async function handleIntrospectScreenVar(internalName, maxListItems) {
-  const tab = await getActiveTab();
-  await ensurePageScriptInjected(tab.id);
-
-  const results = await chrome.scripting.executeScript({
-    target: { tabId: tab.id },
-    world: "MAIN",
-    func: (name, max) => _osScreenVarIntrospect(name, max),
-    args: [internalName, maxListItems || 50],
-  });
-
-  const data = extractScriptResult(results);
-  if (data === undefined) {
-    return { ok: false, error: "Could not access page — is it a restricted URL?" };
-  }
-  return data;
-}
-
-/* ------------------------------------------------------------------ */
-/*  SET SCREEN VAR DEEP (write to nested path in reactive model)       */
-/* ------------------------------------------------------------------ */
-async function handleSetScreenVarDeep(internalName, path, value, dataType) {
-  const tab = await getActiveTab();
-  await ensurePageScriptInjected(tab.id);
-
-  const results = await chrome.scripting.executeScript({
-    target: { tabId: tab.id },
-    world: "MAIN",
-    func: (name, p, val, type) => _osScreenVarDeepSet(name, p, val, type),
-    args: [internalName, path, value, dataType],
-  });
-
-  const data = extractScriptResult(results);
-  if (data === undefined) {
-    return { ok: false, error: "Could not access page — is it a restricted URL?" };
-  }
-  return data;
-}
-
-/* ------------------------------------------------------------------ */
-/*  LIST APPEND (add a new record to a reactive list)                   */
-/* ------------------------------------------------------------------ */
-async function handleListAppend(internalName, path, maxListItems) {
-  const tab = await getActiveTab();
-  await ensurePageScriptInjected(tab.id);
-
-  const results = await chrome.scripting.executeScript({
-    target: { tabId: tab.id },
-    world: "MAIN",
-    func: (name, p, max) => _osScreenVarListAppend(name, p, max),
-    args: [internalName, path || [], maxListItems || 50],
-  });
-
-  const data = extractScriptResult(results);
-  if (data === undefined) {
-    return { ok: false, error: "Could not access page — is it a restricted URL?" };
-  }
-  return data;
-}
-
-/* ------------------------------------------------------------------ */
-/*  LIST DELETE (remove a record from a reactive list by index)         */
-/* ------------------------------------------------------------------ */
-async function handleListDelete(internalName, path, index, maxListItems) {
-  const tab = await getActiveTab();
-  await ensurePageScriptInjected(tab.id);
-
-  const results = await chrome.scripting.executeScript({
-    target: { tabId: tab.id },
-    world: "MAIN",
-    func: (name, p, idx, max) => _osScreenVarListDelete(name, p, idx, max),
-    args: [internalName, path || [], index, maxListItems || 50],
-  });
-
-  const data = extractScriptResult(results);
-  if (data === undefined) {
-    return { ok: false, error: "Could not access page — is it a restricted URL?" };
-  }
-  return data;
-}
-
-/* ------------------------------------------------------------------ */
-/*  GET SCREEN ACTIONS (discover actions from live controller)          */
-/* ------------------------------------------------------------------ */
-async function handleGetScreenActions() {
-  const tab = await getActiveTab();
-  await ensurePageScriptInjected(tab.id);
-
-  const results = await chrome.scripting.executeScript({
-    target: { tabId: tab.id },
-    world: "MAIN",
-    func: () => _osScreenActionsGet(),
-  });
-
-  const data = extractScriptResult(results);
-  if (data === undefined) {
-    return { ok: false, error: "Could not access page — is it a restricted URL?" };
-  }
-  return data;
-}
-
-/* ------------------------------------------------------------------ */
-/*  INVOKE SCREEN ACTION (trigger an action with parameters)           */
-/* ------------------------------------------------------------------ */
-async function handleInvokeScreenAction(methodName, paramValues) {
-  const tab = await getActiveTab();
-  await ensurePageScriptInjected(tab.id);
-
-  const results = await chrome.scripting.executeScript({
-    target: { tabId: tab.id },
-    world: "MAIN",
-    func: (m, p) => _osScreenActionInvoke(m, p),
-    args: [methodName, paramValues || []],
-  });
-
-  const data = extractScriptResult(results);
-  if (data === undefined) {
-    return { ok: false, error: "Could not access page — is it a restricted URL?" };
-  }
-  return data;
-}
-
-/* ------------------------------------------------------------------ */
-/*  INIT ACTION PARAM (create default complex value for action param)  */
-/* ------------------------------------------------------------------ */
-async function handleInitActionParam(methodName, attrName, maxListItems) {
-  const tab = await getActiveTab();
-  await ensurePageScriptInjected(tab.id);
-
-  const results = await chrome.scripting.executeScript({
-    target: { tabId: tab.id },
-    world: "MAIN",
-    func: (m, a, max) => _osActionParamInit(m, a, max),
-    args: [methodName, attrName, maxListItems || 50],
-  });
-
-  const data = extractScriptResult(results);
-  if (data === undefined) {
-    return { ok: false, error: "Could not access page — is it a restricted URL?" };
-  }
-  return data;
-}
-
-/* ------------------------------------------------------------------ */
-/*  INTROSPECT ACTION PARAM (read complex value tree)                  */
-/* ------------------------------------------------------------------ */
-async function handleIntrospectActionParam(methodName, attrName, maxListItems) {
-  const tab = await getActiveTab();
-  await ensurePageScriptInjected(tab.id);
-
-  const results = await chrome.scripting.executeScript({
-    target: { tabId: tab.id },
-    world: "MAIN",
-    func: (m, a, max) => _osActionParamIntrospect(m, a, max),
-    args: [methodName, attrName, maxListItems || 50],
-  });
-
-  const data = extractScriptResult(results);
-  if (data === undefined) {
-    return { ok: false, error: "Could not access page — is it a restricted URL?" };
-  }
-  return data;
-}
-
-/* ------------------------------------------------------------------ */
-/*  SET ACTION PARAM DEEP (write to nested path in temp param)         */
-/* ------------------------------------------------------------------ */
-async function handleSetActionParamDeep(methodName, attrName, path, value, dataType) {
-  const tab = await getActiveTab();
-  await ensurePageScriptInjected(tab.id);
-
-  const results = await chrome.scripting.executeScript({
-    target: { tabId: tab.id },
-    world: "MAIN",
-    func: (m, a, p, val, type) => _osActionParamDeepSet(m, a, p, val, type),
-    args: [methodName, attrName, path, value, dataType],
-  });
-
-  const data = extractScriptResult(results);
-  if (data === undefined) {
-    return { ok: false, error: "Could not access page — is it a restricted URL?" };
-  }
-  return data;
-}
-
-/* ------------------------------------------------------------------ */
-/*  ACTION PARAM LIST APPEND (add record to list in temp param)        */
-/* ------------------------------------------------------------------ */
-async function handleActionParamListAppend(methodName, attrName, path, maxListItems) {
-  const tab = await getActiveTab();
-  await ensurePageScriptInjected(tab.id);
-
-  const results = await chrome.scripting.executeScript({
-    target: { tabId: tab.id },
-    world: "MAIN",
-    func: (m, a, p, max) => _osActionParamListAppend(m, a, p, max),
-    args: [methodName, attrName, path || [], maxListItems || 50],
-  });
-
-  const data = extractScriptResult(results);
-  if (data === undefined) {
-    return { ok: false, error: "Could not access page — is it a restricted URL?" };
-  }
-  return data;
-}
-
-/* ------------------------------------------------------------------ */
-/*  ACTION PARAM LIST DELETE (remove record from list in temp param)   */
-/* ------------------------------------------------------------------ */
-async function handleActionParamListDelete(methodName, attrName, path, index, maxListItems) {
-  const tab = await getActiveTab();
-  await ensurePageScriptInjected(tab.id);
-
-  const results = await chrome.scripting.executeScript({
-    target: { tabId: tab.id },
-    world: "MAIN",
-    func: (m, a, p, idx, max) => _osActionParamListDelete(m, a, p, idx, max),
-    args: [methodName, attrName, path || [], index, maxListItems || 50],
-  });
-
-  const data = extractScriptResult(results);
-  if (data === undefined) {
-    return { ok: false, error: "Could not access page — is it a restricted URL?" };
-  }
-  return data;
-}
+});
 
 /* ------------------------------------------------------------------ */
 /*  NAVIGATE                                                           */
