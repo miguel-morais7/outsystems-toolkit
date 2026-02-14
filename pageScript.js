@@ -1222,6 +1222,81 @@ function _osScreenActionsGet() {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Auto-create default complex param for action invocation            */
+/* ------------------------------------------------------------------ */
+/**
+ * Creates a default instance of a complex parameter (Record, RecordList)
+ * using the action's variable group type metadata.
+ * Called when invoking an action whose complex param was not manually
+ * initialized via the inspect popup.
+ *
+ * @param {Object} ctrl - The controller instance
+ * @param {string} methodName - The proxy method name (e.g. "action1$Action")
+ * @param {string} attrName - The attribute name (e.g. "employeeInLocal")
+ * @returns {*|null} A default instance, or null if creation fails
+ */
+function _createDefaultComplexParam(ctrl, methodName, attrName) {
+  try {
+    var proto = Object.getPrototypeOf(ctrl);
+    var internalFn = proto["_" + methodName];
+    if (typeof internalFn !== "function") return null;
+
+    var src = internalFn.toString();
+    var keyMatch = src.match(/getVariableGroupType\s*\(\s*"([^"]+)"\s*\)/);
+    if (!keyMatch) return null;
+
+    var VarType = ctrl.constructor.getVariableGroupType(keyMatch[1]);
+    if (!VarType || typeof VarType.attributesToDeclare !== "function") return null;
+
+    var attrs = VarType.attributesToDeclare();
+    var targetAttr = null;
+    for (var i = 0; i < attrs.length; i++) {
+      if (attrs[i].attrName === attrName) {
+        targetAttr = attrs[i];
+        break;
+      }
+    }
+    if (!targetAttr) return null;
+
+    // Strategy 1: Use defaultValue (factory function or object instance)
+    if (typeof targetAttr.defaultValue === "function") {
+      try {
+        var val = targetAttr.defaultValue();
+        if (val !== null && val !== undefined) return val;
+      } catch (_) { /* fall through */ }
+    } else if (targetAttr.defaultValue !== null && typeof targetAttr.defaultValue === "object") {
+      try {
+        // Clone the default value to avoid mutating the template
+        if (typeof targetAttr.defaultValue.clone === "function") {
+          return targetAttr.defaultValue.clone();
+        }
+        return targetAttr.defaultValue;
+      } catch (_) { /* fall through */ }
+    }
+
+    // Strategy 2: Use complexType constructor
+    if (targetAttr.complexType && typeof targetAttr.complexType === "function") {
+      try { return new targetAttr.complexType(); } catch (_) { /* fall through */ }
+    }
+
+    // Strategy 3: Instantiate VarType and read the attribute
+    try {
+      var tempInstance = new VarType();
+      if (tempInstance && typeof tempInstance.get === "function") {
+        var val2 = tempInstance.get(attrName);
+        if (val2 !== null && val2 !== undefined) return val2;
+      } else if (tempInstance && tempInstance[attrName] !== undefined) {
+        return tempInstance[attrName];
+      }
+    } catch (_) { /* fall through */ }
+
+    return null;
+  } catch (_) {
+    return null;
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /*  INVOKE SCREEN ACTION — trigger a screen action with parameters     */
 /* ------------------------------------------------------------------ */
 /**
@@ -1259,6 +1334,14 @@ function _osScreenActionInvoke(methodName, paramValues) {
           coercedArgs.push(complexVal);
           continue;
         }
+        // Auto-create a default instance for uninitialized complex params
+        // (the OS runtime calls .clone() on Record inputs, so plain values crash)
+        var defaultVal = _createDefaultComplexParam(ctrl, methodName, pv.attrName);
+        if (defaultVal !== null && defaultVal !== undefined) {
+          coercedArgs.push(defaultVal);
+          continue;
+        }
+        return { ok: false, error: "Parameter '" + pv.attrName + "': complex type not initialized and no default available." };
       }
       var coerced = _coerceValue(pv.value, pv.dataType);
       if (coerced.error) {
