@@ -110,7 +110,17 @@ async function doScan() {
 
     // Roles
     if (rolesResult && rolesResult.ok) {
-      roles.setData(rolesResult.roles || []);
+      const rolesList = rolesResult.roles || [];
+      // Check which roles the current user has (requires roleKey from parsers)
+      if (rolesList.length > 0 && rolesList[0].roleKey) {
+        const userRolesResult = await sendMessage({ action: "CHECK_USER_ROLES", roles: rolesList }).catch(() => null);
+        if (userRolesResult && userRolesResult.ok) {
+          for (const role of rolesList) {
+            role.userHasRole = !!userRolesResult.userRoles[role.name];
+          }
+        }
+      }
+      roles.setData(rolesList);
       roles.render();
     } else {
       roles.setData([]);

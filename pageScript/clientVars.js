@@ -204,6 +204,30 @@ function _osClientVarsGet(moduleName, varName) {
 }
 
 /* ------------------------------------------------------------------ */
+/*  CHECK USER ROLES — check which roles the current user has          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Check which of the given roles the currently logged-in user has.
+ * Uses the OutSystems RolesService AMD module to check each roleKey.
+ *
+ * @param {Array<{name: string, roleKey: string}>} roles
+ * @returns {{ ok: true, userRoles: Object<string, boolean> } | { ok: false, error: string }}
+ */
+function _osUserRolesCheck(roles) {
+  try {
+    var RolesService = require("OutSystems/ClientRuntime/RolesService");
+    var result = {};
+    for (var i = 0; i < roles.length; i++) {
+      result[roles[i].name] = RolesService.checkRole(roles[i].roleKey);
+    }
+    return { ok: true, userRoles: result };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /*  SCAN PRODUCERS — discover producer references from referencesHealth.js */
 /* ------------------------------------------------------------------ */
 function _osProducersScan() {

@@ -80,9 +80,19 @@ export function render() {
 /* ================================================================== */
 
 function buildRoleRow(role) {
+    const activeIcon = role.userHasRole
+        ? `<span class="role-active-badge" title="Current user has this role">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+              <polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+           </span>`
+        : "";
+
     return `
-    <div class="var-row role-row" data-role-name="${esc(role.name)}">
+    <div class="var-row role-row${role.userHasRole ? " role-active" : ""}" data-role-name="${esc(role.name)}">
       <div class="var-info">
+        ${activeIcon}
         <span class="var-name">${esc(role.name)}</span>
       </div>
     </div>`;

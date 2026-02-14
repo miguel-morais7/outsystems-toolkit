@@ -370,11 +370,12 @@ export async function fetchRoles(pageUrl) {
   const roles = [];
 
   // Match each role entry: RoleName: { roleKey: "...", roleException: new OS.Exceptions.Exceptions.NotRegisteredException("...", "message") }
-  const rolePattern = /(\w+)\s*:\s*\{\s*roleKey\s*:\s*"[^"]*"\s*,\s*roleException\s*:\s*new\s+OS\.Exceptions\.Exceptions\.NotRegisteredException\s*\([^)]*\)/g;
+  const rolePattern = /(\w+)\s*:\s*\{\s*roleKey\s*:\s*"([^"]*)"\s*,\s*roleException\s*:\s*new\s+OS\.Exceptions\.Exceptions\.NotRegisteredException\s*\([^)]*\)/g;
   let match;
   while ((match = rolePattern.exec(scriptText)) !== null) {
     roles.push({
-      name: match[1]
+      name: match[1],
+      roleKey: match[2],
     });
   }
 

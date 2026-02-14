@@ -109,6 +109,7 @@ const PAGE_ACTIONS = {
   SET_SCREEN_VAR_DEEP:      { func: (n, p, v, t) => _osScreenVarDeepSet(n, p, v, t),                     args: msg => [msg.internalName, msg.path, msg.value, msg.dataType] },
   LIST_APPEND:              { func: (n, p, m) => _osScreenVarListAppend(n, p, m),                         args: msg => [msg.internalName, msg.path || [], msg.maxListItems || 50] },
   LIST_DELETE:              { func: (n, p, i, m) => _osScreenVarListDelete(n, p, i, m),                   args: msg => [msg.internalName, msg.path || [], msg.index, msg.maxListItems || 50] },
+  CHECK_USER_ROLES:         { func: (roles) => _osUserRolesCheck(roles),                                   args: msg => [msg.roles] },
   GET_SCREEN_ACTIONS:       { func: () => _osScreenActionsGet(),                                           args: () => [] },
   INVOKE_SCREEN_ACTION:     { func: (m, p) => _osScreenActionInvoke(m, p),                                args: msg => [msg.methodName, msg.paramValues || []] },
   INIT_ACTION_PARAM:        { func: (m, a, mx) => _osActionParamInit(m, a, mx),                           args: msg => [msg.methodName, msg.attrName, msg.maxListItems || 50] },

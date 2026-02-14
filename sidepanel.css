@@ -471,6 +471,30 @@ body {
   color: #991b1b;
 }
 
+/* Role active indicator — current user has this role */
+.role-row .var-info {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.role-active {
+  background: linear-gradient(90deg, rgba(6, 95, 70, 0.08) 0%, rgba(255, 255, 255, 1) 100%);
+}
+
+.role-active::before {
+  background: linear-gradient(135deg, #065f46 0%, #047857 100%);
+  opacity: 1;
+}
+
+.role-active-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #065f46;
+  flex-shrink: 0;
+}
+
 .var-value-wrap {
   display: flex;
   align-items: center;
