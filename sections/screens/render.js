@@ -71,6 +71,7 @@ export function render() {
 
 function buildScreenRow(s) {
   const isCurrent = s.screenUrl === state.currentScreen;
+  const isHome = s.fullName === state.homeScreenName;
   const isExpanded = !!state.expandedScreens[s.screenUrl];
   const isLoading = !!state.loadingScreens[s.screenUrl];
   const navUrl = state.screenBaseUrl + "/" + s.screenUrl;
@@ -82,6 +83,7 @@ function buildScreenRow(s) {
         <svg class="screen-expand-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
         <span class="var-name">${esc(s.name)}</span>
         ${isCurrent ? '<span class="var-type screen-current-badge">CURRENT</span>' : ''}
+        ${isHome ? '<span class="var-type screen-home-badge">HOME</span>' : ''}
       </div>
       <div class="var-value-wrap">
         <button class="btn-icon btn-navigate" data-url="${escAttr(navUrl)}" title="Navigate to ${esc(s.name)}">

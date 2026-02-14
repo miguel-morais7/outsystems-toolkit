@@ -753,6 +753,19 @@ body {
   animation: pulse-badge 2s ease-in-out infinite;
 }
 
+.screen-home-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  padding: 3px 8px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #065f46 0%, #047857 100%);
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(6, 95, 70, 0.3);
+}
+
 @keyframes pulse-badge {
 
   0%,
@@ -1094,6 +1107,90 @@ body {
   color: var(--os-red);
   margin-left: 2px;
   font-weight: 400;
+}
+
+/* ------------------------------------------------------------------ */
+/*  STATIC ENTITIES SECTION                                            */
+/* ------------------------------------------------------------------ */
+
+.static-entity-group {
+  margin-bottom: 2px;
+}
+
+.entity-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px 6px 36px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  cursor: pointer;
+  user-select: none;
+  border-bottom: 1px solid var(--border);
+  transition: background var(--transition);
+}
+
+.entity-header:hover {
+  background: var(--bg-hover);
+}
+
+.entity-chevron {
+  transition: transform var(--transition);
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.entity-header.collapsed .entity-chevron {
+  transform: rotate(-90deg);
+}
+
+.entity-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.entity-attrs-hint {
+  flex: 1;
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.record-id {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  margin-left: 4px;
+}
+
+.entity-body {
+  overflow: hidden;
+}
+
+.entity-body.collapsed {
+  display: none;
+}
+
+.static-entity-record-row .btn-copy-guid,
+.entity-header .btn-copy-guid {
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+
+.static-entity-record-row:hover .btn-copy-guid,
+.entity-header:hover .btn-copy-guid {
+  opacity: 0.6;
+}
+
+.static-entity-record-row .btn-copy-guid:hover,
+.entity-header .btn-copy-guid:hover {
+  opacity: 1;
+  color: var(--os-red);
 }
 
 /* ------------------------------------------------------------------ */

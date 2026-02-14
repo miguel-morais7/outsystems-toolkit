@@ -10,6 +10,7 @@ export const state = {
   screenBaseUrl: "",
   moduleName: "",
   currentScreen: "",
+  homeScreenName: "",
   collapsedScreenFlows: {},
   expandedScreens: {},   // screenUrl -> true/false
   loadingScreens: {},    // screenUrl -> true (while fetching)
@@ -26,11 +27,12 @@ export const emptyState = document.getElementById("empty-state");
 export const sectionEl = document.getElementById("screen-section");
 
 /** Replace section data after a scan. */
-export function setData(screens, baseUrl, modName, current) {
+export function setData(screens, baseUrl, modName, current, homeScreen) {
   state.allScreens = screens;
   state.screenBaseUrl = baseUrl || "";
   state.moduleName = modName || "";
   state.currentScreen = current || "";
+  state.homeScreenName = homeScreen || "";
 }
 
 /** Return counts for the status-bar summary. */

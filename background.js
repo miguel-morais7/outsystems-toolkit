@@ -125,7 +125,7 @@ const PAGE_ACTIONS = {
 const SPECIAL_ACTIONS = {
   FETCH_SCREENS:        () => getActiveTab().then(tab => fetchScreens(tab.url)),
   FETCH_ROLES:          () => getActiveTab().then(tab => fetchRoles(tab.url)),
-  FETCH_SCREEN_DETAILS: msg => fetchScreenDetails(msg.baseUrl, msg.moduleName, msg.flow, msg.screenName),
+  FETCH_SCREEN_DETAILS: msg => fetchScreenDetails(msg.baseUrl, msg.moduleName, msg.flow, msg.screenName, msg.controllerModuleName),
   NAVIGATE:             msg => handleNavigate(msg.url),
 };
 

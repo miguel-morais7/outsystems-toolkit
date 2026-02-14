@@ -54,7 +54,7 @@
         <circle cx="11" cy="11" r="8" />
         <line x1="21" y1="21" x2="16.65" y2="16.65" />
       </svg>
-      <p>Click <strong>Scan</strong> to discover client variables, producers, screens, and roles on this page.</p>
+      <p>Click <strong>Scan</strong> to discover client variables, producers, screens, static entities, and roles on this page.</p>
     </div>
 
     <!-- Loading spinner -->
@@ -125,6 +125,33 @@
         </div>
       </div>
       <div id="screen-list" class="var-list"></div>
+    </div>
+
+    <!-- Static Entities list (populated dynamically) -->
+    <div id="static-entity-section" class="section hidden">
+      <div class="section-header" data-section="staticEntities">
+        <svg class="section-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+        <span class="section-title">Static Entities</span>
+        <span id="static-entity-count" class="section-count">0</span>
+      </div>
+      <!-- Static Entity search bar -->
+      <div class="producer-search-wrapper">
+        <div class="search-bar">
+          <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+          <input id="input-search-static-entities" type="text" placeholder="Search records…" autocomplete="off" />
+          <select id="select-static-entity-module" title="Filter by module">
+            <option value="">All Modules</option>
+          </select>
+        </div>
+      </div>
+      <div id="static-entity-list" class="var-list"></div>
     </div>
 
     <!-- Role list (populated dynamically) -->

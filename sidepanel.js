@@ -19,12 +19,13 @@ import * as variables from './sections/variables.js';
 import * as producers from './sections/producers.js';
 import * as screens from './sections/screens/index.js';
 import * as roles from './sections/roles.js';
+import * as staticEntities from './sections/staticEntities.js';
 
 /* ================================================================== */
 /*  Section registry                                                   */
 /*  Add new sections here — showLoading / showEmptyState pick them up  */
 /* ================================================================== */
-const sections = [appmetadata, variables, screens, roles, producers];
+const sections = [appmetadata, variables, screens, staticEntities, roles, producers];
 
 /* ================================================================== */
 /*  DOM references (orchestrator-level only)                           */
@@ -76,18 +77,35 @@ async function doScan() {
     variables.populateModuleFilter();
     variables.render();
 
+    // Version info (from moduleinfo, separate from appDefinition)
+    if (screenResult?.ok && screenResult.versionInfo) {
+      appmetadata.setVersionInfo(screenResult.versionInfo);
+      appmetadata.render();
+    }
+
     // Screens
     if (screenResult && screenResult.ok) {
       screens.setData(
         screenResult.screens || [],
         screenResult.baseUrl || "",
         screenResult.moduleName || "",
-        screenResult.currentScreen || ""
+        screenResult.currentScreen || "",
+        screenResult.homeScreenName || ""
       );
       screens.render();
     } else {
-      screens.setData([], "", "", "");
+      screens.setData([], "", "", "", "");
       hide(screens.sectionEl);
+    }
+
+    // Static Entities
+    if (screenResult?.ok && screenResult.staticEntities && screenResult.staticEntities.length > 0) {
+      staticEntities.setData(screenResult.staticEntities);
+      staticEntities.populateModuleFilter();
+      staticEntities.render();
+    } else {
+      staticEntities.setData([]);
+      hide(staticEntities.sectionEl);
     }
 
     // Roles
@@ -108,6 +126,7 @@ async function doScan() {
     const varState = variables.getState();
     const prodState = producers.getState();
     const scrState = screens.getState();
+    const seState = staticEntities.getState();
     const rolesState = roles.getState();
 
     const parts = [];
@@ -119,6 +138,10 @@ async function doScan() {
     if (scrState.count > 0) {
       const scrText = scrState.count === 1 ? "screen" : "screens";
       parts.push(`${scrState.count} ${scrText}`);
+    }
+    if (seState.count > 0) {
+      const seText = seState.count === 1 ? "static entity" : "static entities";
+      parts.push(`${seState.count} ${seText}`);
     }
     if (rolesState.count > 0) {
       const rolesText = rolesState.count === 1 ? "role" : "roles";
@@ -133,7 +156,7 @@ async function doScan() {
     if (parts.length > 0) {
       showStatus(`Found ${parts.join(", ")}.`, "success");
     } else {
-      showStatus("No client variables, producers, screens, or roles found on this page.", "error");
+      showStatus("No client variables, producers, screens, static entities, or roles found on this page.", "error");
       showEmptyState();
     }
   } catch (err) {

@@ -13,6 +13,7 @@ import { show, hide } from '../utils/ui.js';
 /*  State                                                              */
 /* ================================================================== */
 let metadataEntries = []; // Array of { key, label, value }
+let versionInfo = null;   // { versionToken, versionSequence }
 
 /* ================================================================== */
 /*  DOM references                                                     */
@@ -37,9 +38,17 @@ export function init() {
 export function setData(appDef) {
   if (!appDef) {
     metadataEntries = [];
+    versionInfo = null;
     return;
   }
   metadataEntries = buildEntries(appDef);
+  appendVersionEntries();
+}
+
+/** Accept version info from moduleinfo (arrives separately from FETCH_SCREENS). */
+export function setVersionInfo(info) {
+  versionInfo = info;
+  appendVersionEntries();
 }
 
 /** Return counts for the status-bar summary. */
@@ -106,6 +115,18 @@ function formatValue(val) {
   if (val === null || val === undefined) return "null";
   if (typeof val === "boolean") return val ? "Yes" : "No";
   return String(val);
+}
+
+function appendVersionEntries() {
+  if (!versionInfo) return;
+  // Remove any previously-added version entries (idempotent)
+  metadataEntries = metadataEntries.filter(e => e.key !== 'versionSequence' && e.key !== 'versionToken');
+  if (versionInfo.versionSequence !== null && versionInfo.versionSequence !== undefined) {
+    metadataEntries.push({ key: 'versionSequence', label: 'Version Sequence', value: String(versionInfo.versionSequence) });
+  }
+  if (versionInfo.versionToken) {
+    metadataEntries.push({ key: 'versionToken', label: 'Version Token', value: versionInfo.versionToken });
+  }
 }
 
 function buildMetadataRow(entry) {

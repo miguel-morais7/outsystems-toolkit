@@ -30,12 +30,14 @@ export async function toggleScreenExpand(screenUrl, flow, screenName) {
   render();
 
   try {
+    const screen = state.allScreens.find(s => s.screenUrl === screenUrl);
     const response = await sendMessage({
       action: "FETCH_SCREEN_DETAILS",
       baseUrl: state.screenBaseUrl,
       moduleName: state.moduleName,
       flow: flow,
       screenName: screenName,
+      controllerModuleName: screen?.controllerModuleName || null,
     });
 
     if (response.ok) {
