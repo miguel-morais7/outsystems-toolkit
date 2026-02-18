@@ -803,15 +803,15 @@ body {
 
 .screen-role-badge {
   display: inline-block;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: .03em;
-  padding: 2px 6px;
-  border-radius: 8px;
-  background: var(--bg-tertiary);
-  color: var(--text-muted);
-  border: 1px solid var(--border-color);
+  letter-spacing: .04em;
+  padding: 4px 10px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(201, 42, 42, 0.12) 0%, rgba(171, 36, 36, 0.10) 100%);
+  color: var(--color-red-dark);
+  border: 1px solid rgba(201, 42, 42, 0.25);
 }
 
 .screen-role-public {
@@ -832,6 +832,21 @@ body {
   letter-spacing: .05em;
   padding: 3px 8px;
   border-radius: 10px;
+}
+
+/* Roles list in screen details */
+.screen-roles-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 10px !important;
+  background: transparent !important;
+}
+
+.screen-roles-list:hover {
+  background: transparent !important;
+  transform: none !important;
+  box-shadow: none !important;
 }
 
 @keyframes pulse-badge {
@@ -929,10 +944,9 @@ body {
 
 .screen-detail-header {
   font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--color-red-dark);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-secondary);
   margin-bottom: 6px;
   padding-bottom: 4px;
   border-bottom: 2px solid transparent;
