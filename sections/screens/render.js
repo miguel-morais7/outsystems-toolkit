@@ -116,7 +116,7 @@ function buildScreenRow(s) {
     if (isLoading) {
       html += `<div class="screen-details-loading"><span class="mini-spinner"></span> Loading...</div>`;
     } else if (s.details) {
-      html += buildScreenDetails(s.details, isCurrent, s.roles);
+      html += buildScreenDetails(s.details, isCurrent, s.roles, s.screenUrl);
     }
     html += `</div>`;
   }
@@ -124,88 +124,103 @@ function buildScreenRow(s) {
   return html;
 }
 
-function buildScreenDetails(details, isCurrent, roles) {
+function buildSubSection(screenUrl, key, title, contentHtml) {
+  const stateKey = screenUrl + "::" + key;
+  const isCollapsed = !!state.collapsedSubSections[stateKey];
+  let html = `<div class="screen-detail-section ${isCollapsed ? "sub-collapsed" : ""}" data-screen-url="${escAttr(screenUrl)}" data-sub-key="${escAttr(key)}">`;
+  html += `<div class="screen-detail-header screen-detail-header-toggle">`;
+  html += `<svg class="screen-sub-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`;
+  html += `${esc(title)}<span class="count-badge screen-sub-count">${contentHtml.count}</span>`;
+  html += `</div>`;
+  html += `<div class="screen-detail-body ${isCollapsed ? "collapsed" : ""}">${contentHtml.html}</div>`;
+  html += `</div>`;
+  return html;
+}
+
+function buildScreenDetails(details, isCurrent, roles, screenUrl) {
   let html = "";
 
   // Roles (skip if already shown inline as Public/Registered badge)
   const isInlineRole = roles && roles.length === 1 && (roles[0] === 'Public' || roles[0] === 'Registered');
   if (roles && roles.length > 0 && !isInlineRole) {
-    html += `<div class="screen-detail-section">`;
-    html += `<div class="screen-detail-header">Roles</div>`;
-    html += `<div class="screen-detail-item screen-roles-list">${buildRoleBadges(roles)}</div>`;
-    html += `</div>`;
+    html += buildSubSection(screenUrl, "roles", "Roles", {
+      count: roles.length,
+      html: `<div class="screen-detail-item screen-roles-list">${buildRoleBadges(roles)}</div>`
+    });
   }
 
   // Input Parameters
   if (details.inputParameters.length > 0) {
-    html += `<div class="screen-detail-section">`;
-    html += `<div class="screen-detail-header">Input Parameters</div>`;
-    for (const v of details.inputParameters) {
-      html += buildScreenVarItem(v, isCurrent);
-    }
-    html += `</div>`;
+    let items = "";
+    for (const v of details.inputParameters) items += buildScreenVarItem(v, isCurrent);
+    html += buildSubSection(screenUrl, "inputParams", "Input Parameters", {
+      count: details.inputParameters.length, html: items
+    });
   }
 
   // Local Variables
   if (details.localVariables.length > 0) {
-    html += `<div class="screen-detail-section">`;
-    html += `<div class="screen-detail-header">Local Variables</div>`;
-    for (const v of details.localVariables) {
-      html += buildScreenVarItem(v, isCurrent);
-    }
-    html += `</div>`;
+    let items = "";
+    for (const v of details.localVariables) items += buildScreenVarItem(v, isCurrent);
+    html += buildSubSection(screenUrl, "localVars", "Local Variables", {
+      count: details.localVariables.length, html: items
+    });
   }
 
   // Aggregates
   if (details.aggregates.length > 0) {
-    html += `<div class="screen-detail-section">`;
-    html += `<div class="screen-detail-header">Aggregates</div>`;
+    let items = "";
     for (const a of details.aggregates) {
-      html += `<div class="screen-detail-item">
+      items += `<div class="screen-detail-item">
         <span class="screen-detail-name">${esc(a.name)}</span>
       </div>`;
     }
-    html += `</div>`;
+    html += buildSubSection(screenUrl, "aggregates", "Aggregates", {
+      count: details.aggregates.length, html: items
+    });
   }
 
   // Data Actions
   if (details.dataActions && details.dataActions.length > 0) {
-    html += `<div class="screen-detail-section">`;
-    html += `<div class="screen-detail-header">Data Actions</div>`;
+    let items = "";
     for (const da of details.dataActions) {
-      html += `<div class="screen-detail-item">
+      items += `<div class="screen-detail-item">
         <span class="screen-detail-name">${esc(da.name)}</span>
       </div>`;
     }
-    html += `</div>`;
+    html += buildSubSection(screenUrl, "dataActions", "Data Actions", {
+      count: details.dataActions.length, html: items
+    });
   }
 
   // Server Actions
   if (details.serverActions.length > 0) {
-    html += `<div class="screen-detail-section">`;
-    html += `<div class="screen-detail-header">Server Actions</div>`;
+    let items = "";
     for (const sa of details.serverActions) {
-      html += `<div class="screen-detail-item">
+      items += `<div class="screen-detail-item">
         <span class="screen-detail-name">${esc(sa.name)}</span>
       </div>`;
     }
-    html += `</div>`;
+    html += buildSubSection(screenUrl, "serverActions", "Server Actions", {
+      count: details.serverActions.length, html: items
+    });
   }
 
   // Screen Actions
   if (details.screenActions.length > 0) {
-    html += `<div class="screen-detail-section">`;
-    html += `<div class="screen-detail-header">Screen Actions</div>`;
+    let items = "";
     for (const ca of details.screenActions) {
       if (isCurrent && ca.methodName) {
-        html += buildScreenActionItem(ca);
+        items += buildScreenActionItem(ca);
       } else {
-        html += `<div class="screen-detail-item">
+        items += `<div class="screen-detail-item">
           <span class="screen-detail-name">${esc(ca.name)}</span>
         </div>`;
       }
     }
-    html += `</div>`;
+    html += buildSubSection(screenUrl, "screenActions", "Screen Actions", {
+      count: details.screenActions.length, html: items
+    });
   }
 
   // If no details at all

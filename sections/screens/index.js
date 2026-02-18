@@ -93,6 +93,21 @@ export function init() {
       return;
     }
 
+    // Sub-section header expand/collapse
+    const subHeader = e.target.closest(".screen-detail-header-toggle");
+    if (subHeader) {
+      e.stopPropagation();
+      const section = subHeader.closest(".screen-detail-section");
+      if (section) {
+        const key = section.dataset.screenUrl + "::" + section.dataset.subKey;
+        state.collapsedSubSections[key] = !state.collapsedSubSections[key];
+        section.classList.toggle("sub-collapsed", !!state.collapsedSubSections[key]);
+        const body = section.querySelector(".screen-detail-body");
+        if (body) body.classList.toggle("collapsed", !!state.collapsedSubSections[key]);
+      }
+      return;
+    }
+
     // Screen row expand/collapse (click on the row itself, not navigate button)
     const screenRow = e.target.closest(".screen-row");
     if (screenRow && !e.target.closest(".btn-navigate")) {
