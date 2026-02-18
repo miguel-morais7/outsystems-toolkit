@@ -243,9 +243,10 @@ function renderPopupError(msg) {
  * @param {Object} node - Tree node from _osScreenVarIntrospect
  * @param {Array} path - Path of steps from root to this node
  * @param {number} depth - Current depth for auto-collapse
+ * @param {Set<string>} expandedPaths - Set of path strings for expanded nodes (optional)
  * @returns {string} HTML string
  */
-function buildTreeNode(node, path, depth) {
+function buildTreeNode(node, path, depth, expandedPaths = null) {
   if (!node) return "";
 
   // Clean up the display name: strip trailing "Attr", "Var", "Out" suffixes
@@ -256,11 +257,15 @@ function buildTreeNode(node, path, depth) {
   }
 
   if (node.kind === "list") {
-    const isCollapsed = depth > 1 ? " collapsed" : "";
-    const childrenCollapsed = depth > 1 ? " collapsed" : "";
-    const listPathJson = escAttr(JSON.stringify(path));
+    const pathStr = JSON.stringify(path);
+    const listPathJson = escAttr(pathStr);
+    // Use expandedPaths if provided, otherwise use default depth-based collapse
+    const shouldExpand = expandedPaths !== null ? expandedPaths.has(pathStr) : depth <= 1;
+    const isCollapsed = shouldExpand ? "" : " collapsed";
+    const childrenCollapsed = shouldExpand ? "" : " collapsed";
+
     let html = `<div class="var-tree-node ${depth === 0 ? "var-tree-root" : ""}">`;
-    html += `<div class="var-tree-header${isCollapsed}">`;
+    html += `<div class="var-tree-header${isCollapsed}" data-path="${listPathJson}">`;
     html += `<svg class="var-tree-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`;
     html += `<span class="var-tree-key">${esc(displayKey)}</span>`;
     html += `<span class="var-tree-badge">${node.count} item${node.count !== 1 ? "s" : ""}</span>`;
@@ -274,7 +279,7 @@ function buildTreeNode(node, path, depth) {
       html += `<button class="btn-list-delete" data-path="${listPathJson}" data-index="${itemIndex}" title="Delete item ${itemIndex}">`;
       html += `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
       html += `</button>`;
-      html += buildTreeNode(item, itemPath, depth + 1);
+      html += buildTreeNode(item, itemPath, depth + 1, expandedPaths);
       html += `</div>`;
     }
     if (node.truncated) {
@@ -289,10 +294,15 @@ function buildTreeNode(node, path, depth) {
   }
 
   if (node.kind === "record") {
-    const isCollapsed = depth > 2 ? " collapsed" : "";
-    const childrenCollapsed = depth > 2 ? " collapsed" : "";
+    const pathStr = JSON.stringify(path);
+    const recordPathJson = escAttr(pathStr);
+    // Use expandedPaths if provided, otherwise use default depth-based collapse
+    const shouldExpand = expandedPaths !== null ? expandedPaths.has(pathStr) : depth <= 2;
+    const isCollapsed = shouldExpand ? "" : " collapsed";
+    const childrenCollapsed = shouldExpand ? "" : " collapsed";
+
     let html = `<div class="var-tree-node ${depth === 0 ? "var-tree-root" : ""}">`;
-    html += `<div class="var-tree-header${isCollapsed}">`;
+    html += `<div class="var-tree-header${isCollapsed}" data-path="${recordPathJson}">`;
     html += `<svg class="var-tree-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`;
     html += `<span class="var-tree-key">${esc(displayKey)}</span>`;
     html += `<span class="var-tree-badge">${node.fields.length} field${node.fields.length !== 1 ? "s" : ""}</span>`;
@@ -300,7 +310,7 @@ function buildTreeNode(node, path, depth) {
     html += `<div class="var-tree-children${childrenCollapsed}">`;
     for (const field of node.fields) {
       const fieldPath = [...path, field.key];
-      html += buildTreeNode(field, fieldPath, depth + 1);
+      html += buildTreeNode(field, fieldPath, depth + 1, expandedPaths);
     }
     html += `</div></div>`;
     return html;
@@ -366,6 +376,21 @@ function cleanAttrName(name) {
   clean = clean.replace(/([a-z])([A-Z])/g, "$1 $2");
   // Capitalize first letter
   return clean.charAt(0).toUpperCase() + clean.slice(1);
+}
+
+/**
+ * Capture the current expansion state of all tree nodes.
+ * Returns a Set of path strings for nodes that are currently expanded.
+ */
+function captureExpansionState() {
+  const expandedPaths = new Set();
+  const headers = popupOverlay.querySelectorAll(".var-tree-header");
+  for (const header of headers) {
+    if (!header.classList.contains("collapsed") && header.dataset.path) {
+      expandedPaths.add(header.dataset.path);
+    }
+  }
+  return expandedPaths;
 }
 
 /**
@@ -449,6 +474,9 @@ async function handleListAppendClick(btn) {
   const origText = btn.textContent;
   btn.textContent = "Adding…";
 
+  // Capture expansion state before making changes
+  const expandedPaths = captureExpansionState();
+
   try {
     let result;
     if (popupState.isActionParam) {
@@ -470,10 +498,13 @@ async function handleListAppendClick(btn) {
       throw new Error(result?.error || "Failed to append record.");
     }
 
-    // Re-render the entire tree with the updated data
+    // Ensure the parent list stays expanded
+    expandedPaths.add(JSON.stringify(path));
+
+    // Re-render the entire tree with the updated data, preserving expansion state
     const body = popupOverlay.querySelector(".var-popup-body");
     if (body) {
-      body.innerHTML = `<div class="var-tree">${buildTreeNode(result.tree, [], 0)}</div>`;
+      body.innerHTML = `<div class="var-tree">${buildTreeNode(result.tree, [], 0, expandedPaths)}</div>`;
     }
 
     toast("Record added", "success");
@@ -509,6 +540,9 @@ async function handleListDeleteClick(btn) {
   const listItem = btn.closest(".var-tree-list-item");
   if (listItem) listItem.style.opacity = "0.5";
 
+  // Capture expansion state before making changes
+  const expandedPaths = captureExpansionState();
+
   try {
     let result;
     if (popupState.isActionParam) {
@@ -532,10 +566,13 @@ async function handleListDeleteClick(btn) {
       throw new Error(result?.error || "Failed to delete record.");
     }
 
-    // Re-render the entire tree with the updated data
+    // Ensure the parent list stays expanded
+    expandedPaths.add(JSON.stringify(path));
+
+    // Re-render the entire tree with the updated data, preserving expansion state
     const body = popupOverlay.querySelector(".var-popup-body");
     if (body) {
-      body.innerHTML = `<div class="var-tree">${buildTreeNode(result.tree, [], 0)}</div>`;
+      body.innerHTML = `<div class="var-tree">${buildTreeNode(result.tree, [], 0, expandedPaths)}</div>`;
     }
 
     toast("Record deleted", "success");
