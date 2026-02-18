@@ -491,9 +491,45 @@ export async function fetchScreenDetails(baseUrl, moduleName, flow, screenName, 
       if (isAggregate) {
         result.aggregates.push({ name });
       } else if (isDataAction) {
-        result.dataActions.push({ name });
+        result.dataActions.push({ name, refreshMethodName: rawName });
       }
     }
+  }
+
+  // ----------------------------------------------------------------
+  // Enrich Data Actions with output parameter metadata
+  // Pattern: {Name}DataActRec.attributesToDeclare = function () {
+  //   return [ this.attr("DisplayName", "attrName", ..., OS.DataTypes.DataTypes.TypeName, ...) ]
+  // Also find the variable attrName from VariablesRecord
+  // ----------------------------------------------------------------
+  const TYPE_MAP_DA = { DateTime: "Date Time", LongInteger: "Long Integer", PhoneNumber: "Phone Number" };
+
+  for (const da of result.dataActions) {
+    const baseCamel = da.refreshMethodName.replace("$DataActRefresh", "");
+    // Match the DataActRec.attributesToDeclare block (case-insensitive on base name)
+    const recPattern = new RegExp(
+      baseCamel + "DataActRec\\.attributesToDeclare\\s*=\\s*function\\s*\\(\\)\\s*\\{[\\s\\S]*?return\\s*\\[([\\s\\S]*?)\\]\\.concat",
+      "i"
+    );
+    const recMatch = recPattern.exec(scriptText);
+    da.outputs = [];
+    if (recMatch) {
+      const attrsStr = recMatch[1];
+      const attrPattern = /this\.attr\s*\(\s*"([^"]+)"\s*,\s*"([^"]+)"\s*,\s*"[^"]*"\s*,\s*(?:true|false)\s*,\s*(?:true|false)\s*,\s*OS\.DataTypes\.DataTypes\.(\w+)/g;
+      let attrMatch;
+      while ((attrMatch = attrPattern.exec(attrsStr)) !== null) {
+        const rawType = attrMatch[3];
+        const dataType = TYPE_MAP_DA[rawType] || rawType;
+        da.outputs.push({ name: attrMatch[1], attrName: attrMatch[2], dataType });
+      }
+    }
+
+    // Find the variable attrName from VariablesRecord
+    const varPattern = new RegExp(
+      'this\\.attr\\s*\\(\\s*"' + da.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '"\\s*,\\s*"([^"]+DataAct[^"]*)"'
+    );
+    const varMatch = varPattern.exec(varsRecordBody);
+    da.varAttrName = varMatch ? varMatch[1] : null;
   }
 
   // ----------------------------------------------------------------

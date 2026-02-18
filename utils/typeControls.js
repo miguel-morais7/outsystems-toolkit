@@ -83,6 +83,17 @@ export function buildTypeControl(opts) {
                 ${INSPECT_ICON_SVG}
               </button>`;
     }
+    if (opts.varAttrName) {
+      // Data action output complex type
+      return `<button class="btn-icon btn-data-action-output-popup"
+                      data-var-attr-name="${escAttr(opts.varAttrName)}"
+                      data-output-attr-name="${escAttr(identifier)}"
+                      data-type="${escAttr(dataType)}"
+                      data-name="${escAttr(name)}"
+                      title="Inspect ${esc(name)}">
+                ${INSPECT_ICON_SVG}
+              </button>`;
+    }
     // Screen variable complex type
     return `<button class="btn-icon btn-var-popup"
                     data-internal-name="${escAttr(identifier)}"

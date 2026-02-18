@@ -6,11 +6,11 @@
  */
 
 import { debounce, sendMessage } from '../../utils/helpers.js';
-import { initPopupListeners, openVarPopup, openActionParamPopup } from '../screenVarPopup.js';
+import { initPopupListeners, openVarPopup, openActionParamPopup, openDataActionOutputPopup } from '../screenVarPopup.js';
 import { state, inputSearch, screenList } from './state.js';
 import { render } from './render.js';
-import { doSetScreenVar, commitScreenVarInput } from './editing.js';
-import { invokeScreenAction } from './actions.js';
+import { doSetScreenVar, commitScreenVarInput, doSetDataActionOutput, commitDataActionOutputInput } from './editing.js';
+import { invokeScreenAction, refreshDataAction } from './actions.js';
 import { toggleScreenExpand } from './data.js';
 
 export { sectionEl, setData, getState } from './state.js';
@@ -42,6 +42,19 @@ export function init() {
       return;
     }
 
+    // Inspect popup icon for complex data action output parameters
+    const daOutputPopupBtn = e.target.closest(".btn-data-action-output-popup");
+    if (daOutputPopupBtn) {
+      e.stopPropagation();
+      openDataActionOutputPopup(
+        daOutputPopupBtn.dataset.varAttrName,
+        daOutputPopupBtn.dataset.outputAttrName,
+        daOutputPopupBtn.dataset.name,
+        daOutputPopupBtn.dataset.type
+      );
+      return;
+    }
+
     // Navigate button
     const navBtn = e.target.closest(".btn-navigate");
     if (navBtn) {
@@ -62,11 +75,34 @@ export function init() {
       return;
     }
 
-    // Trigger action button
+    // Trigger data action refresh button
+    const daTriggerBtn = e.target.closest(".btn-trigger-data-action");
+    if (daTriggerBtn) {
+      e.stopPropagation();
+      refreshDataAction(daTriggerBtn);
+      return;
+    }
+
+    // Trigger screen action button
     const triggerBtn = e.target.closest(".btn-trigger-action");
     if (triggerBtn) {
       e.stopPropagation();
       invokeScreenAction(triggerBtn);
+      return;
+    }
+
+    // Data action header expand/collapse toggle
+    const daHeader = e.target.closest(".data-action-header");
+    if (daHeader && !e.target.closest(".btn-trigger-data-action")) {
+      e.stopPropagation();
+      const daItem = daHeader.closest(".data-action-item");
+      if (daItem) {
+        const rm = daItem.dataset.refreshMethod;
+        state.expandedDataActions[rm] = !state.expandedDataActions[rm];
+        daItem.classList.toggle("expanded", !!state.expandedDataActions[rm]);
+        const body = daItem.querySelector(".screen-action-body-wrap");
+        if (body) body.classList.toggle("collapsed", !state.expandedDataActions[rm]);
+      }
       return;
     }
 
@@ -82,6 +118,22 @@ export function init() {
         const body = actionItem.querySelector(".screen-action-body-wrap");
         if (body) body.classList.toggle("collapsed", !state.expandedActions[method]);
       }
+      return;
+    }
+
+    // Boolean toggle for data action outputs
+    const daOutputToggle = e.target.closest(".data-action-output-toggle:not([disabled])");
+    if (daOutputToggle) {
+      e.stopPropagation();
+      const isActive = daOutputToggle.classList.contains("active");
+      const newVal = !isActive;
+      daOutputToggle.classList.toggle("active", newVal);
+      const row = daOutputToggle.closest(".data-action-output-row");
+      doSetDataActionOutput(
+        row?.dataset.varAttrName,
+        daOutputToggle.dataset.outputAttrName,
+        newVal, "Boolean", row
+      );
       return;
     }
 
@@ -131,6 +183,14 @@ export function init() {
 
   /* Keyboard: Enter → save, Escape → revert */
   screenList.addEventListener("keydown", (e) => {
+    // Data action output inputs
+    const daInput = e.target.closest("input.data-action-output-input:not([readonly])");
+    if (daInput) {
+      if (e.key === "Enter") { e.preventDefault(); commitDataActionOutputInput(daInput); }
+      if (e.key === "Escape") { daInput.value = daInput.dataset.original; daInput.blur(); }
+      return;
+    }
+    // Screen variable inputs
     const input = e.target.closest("input.screen-var-input:not([readonly])");
     if (!input) return;
     if (e.key === "Enter") {
@@ -145,6 +205,11 @@ export function init() {
 
   /* Blur → save if value changed */
   screenList.addEventListener("focusout", (e) => {
+    const daInput = e.target.closest("input.data-action-output-input:not([readonly])");
+    if (daInput) {
+      if (daInput.value !== daInput.dataset.original) commitDataActionOutputInput(daInput);
+      return;
+    }
     const input = e.target.closest("input.screen-var-input:not([readonly])");
     if (!input) return;
     if (input.value !== input.dataset.original) {
@@ -154,6 +219,12 @@ export function init() {
 
   /* Date/time/datetime pickers fire "change" */
   screenList.addEventListener("change", (e) => {
+    // Data action output date inputs have both classes
+    const daDateInput = e.target.closest("input.data-action-output-input.screen-var-date:not([readonly])");
+    if (daDateInput) {
+      if (daDateInput.value !== daDateInput.dataset.original) commitDataActionOutputInput(daDateInput);
+      return;
+    }
     const input = e.target.closest("input.screen-var-date:not([readonly])");
     if (!input) return;
     if (input.value !== input.dataset.original) {

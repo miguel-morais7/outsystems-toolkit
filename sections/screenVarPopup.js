@@ -13,7 +13,7 @@ import { flashRow, toast } from '../utils/ui.js';
 /*  State                                                              */
 /* ================================================================== */
 let popupOverlay = null;
-let popupState = null; // { internalName, name, type } or { methodName, attrName, name, type, isActionParam: true }
+let popupState = null; // { internalName, name, type, basePath? } or { methodName, attrName, name, type, isActionParam: true }
 
 /* ================================================================== */
 /*  Public API                                                         */
@@ -226,6 +226,64 @@ export async function openActionParamPopup(methodName, attrName, name, type) {
     const body = popupOverlay.querySelector(".var-popup-body");
     if (body) {
       body.innerHTML = buildPopupToolbar() + `<div class="var-tree">${buildTreeNode(result.tree, [], 0)}</div>`;
+    }
+  } catch (e) {
+    renderPopupError(e.message);
+  }
+}
+
+/**
+ * Open the inspect popup for a data action output parameter.
+ * Introspects the data action record variable and navigates to the specific output sub-tree.
+ */
+export async function openDataActionOutputPopup(varAttrName, outputAttrName, name, type) {
+  popupState = { internalName: varAttrName, basePath: [outputAttrName], name, type };
+
+  // Show popup with loading state
+  popupOverlay.innerHTML = `
+    <div class="var-popup">
+      <div class="var-popup-header">
+        <div class="var-popup-header-info">
+          <div class="var-popup-title">${esc(name)}</div>
+          <div class="var-popup-subtitle">${esc(type)} (data action output)</div>
+        </div>
+        <button class="var-popup-close" title="Close">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="var-popup-body">
+        <div class="var-popup-loading"><span class="mini-spinner"></span> Inspecting…</div>
+      </div>
+    </div>`;
+  popupOverlay.classList.remove("hidden");
+
+  try {
+    const result = await sendMessage({
+      action: "INTROSPECT_SCREEN_VAR",
+      internalName: varAttrName,
+    });
+
+    if (!result || !result.ok) {
+      renderPopupError(result?.error || "Failed to introspect data action output.");
+      return;
+    }
+
+    // Navigate to the output field sub-tree
+    let tree = result.tree;
+    if (tree && tree.fields) {
+      const subNode = tree.fields.find(f => f.key === outputAttrName);
+      if (subNode) {
+        tree = subNode;
+      }
+    }
+
+    const body = popupOverlay.querySelector(".var-popup-body");
+    if (body) {
+      body.innerHTML = buildPopupToolbar() + `<div class="var-tree">${buildTreeNode(tree, [], 0)}</div>`;
     }
   } catch (e) {
     renderPopupError(e.message);
@@ -464,10 +522,12 @@ async function commitTreeLeaf(leafEl, newValue) {
         dataType,
       });
     } else {
+      // Prepend basePath for data action output sub-tree navigation
+      const fullPath = popupState.basePath ? [...popupState.basePath, ...path] : path;
       result = await sendMessage({
         action: "SET_SCREEN_VAR_DEEP",
         internalName: popupState.internalName,
-        path,
+        path: fullPath,
         value: newValue,
         dataType,
       });
@@ -529,15 +589,23 @@ async function handleListAppendClick(btn) {
         path,
       });
     } else {
+      const fullPath = popupState.basePath ? [...popupState.basePath, ...path] : path;
       result = await sendMessage({
         action: "LIST_APPEND",
         internalName: popupState.internalName,
-        path,
+        path: fullPath,
       });
     }
 
     if (!result || !result.ok) {
       throw new Error(result?.error || "Failed to append record.");
+    }
+
+    // For basePath mode, navigate to the sub-tree in the returned result
+    let tree = result.tree;
+    if (popupState.basePath && tree && tree.fields) {
+      const subNode = tree.fields.find(f => f.key === popupState.basePath[popupState.basePath.length - 1]);
+      if (subNode) tree = subNode;
     }
 
     // Ensure the parent list stays expanded
@@ -546,7 +614,7 @@ async function handleListAppendClick(btn) {
     // Re-render the entire tree with the updated data, preserving expansion state
     const body = popupOverlay.querySelector(".var-popup-body");
     if (body) {
-      body.innerHTML = buildPopupToolbar() + `<div class="var-tree">${buildTreeNode(result.tree, [], 0, expandedPaths)}</div>`;
+      body.innerHTML = buildPopupToolbar() + `<div class="var-tree">${buildTreeNode(tree, [], 0, expandedPaths)}</div>`;
     }
 
     toast("Record added", "success");
@@ -596,10 +664,11 @@ async function handleListDeleteClick(btn) {
         index,
       });
     } else {
+      const fullPath = popupState.basePath ? [...popupState.basePath, ...path] : path;
       result = await sendMessage({
         action: "LIST_DELETE",
         internalName: popupState.internalName,
-        path,
+        path: fullPath,
         index,
       });
     }
@@ -608,13 +677,20 @@ async function handleListDeleteClick(btn) {
       throw new Error(result?.error || "Failed to delete record.");
     }
 
+    // For basePath mode, navigate to the sub-tree in the returned result
+    let tree = result.tree;
+    if (popupState.basePath && tree && tree.fields) {
+      const subNode = tree.fields.find(f => f.key === popupState.basePath[popupState.basePath.length - 1]);
+      if (subNode) tree = subNode;
+    }
+
     // Ensure the parent list stays expanded
     expandedPaths.add(JSON.stringify(path));
 
     // Re-render the entire tree with the updated data, preserving expansion state
     const body = popupOverlay.querySelector(".var-popup-body");
     if (body) {
-      body.innerHTML = buildPopupToolbar() + `<div class="var-tree">${buildTreeNode(result.tree, [], 0, expandedPaths)}</div>`;
+      body.innerHTML = buildPopupToolbar() + `<div class="var-tree">${buildTreeNode(tree, [], 0, expandedPaths)}</div>`;
     }
 
     toast("Record deleted", "success");

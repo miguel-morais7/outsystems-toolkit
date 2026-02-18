@@ -7,7 +7,7 @@
 import { esc, escAttr } from '../../utils/helpers.js';
 import { show, hide } from '../../utils/ui.js';
 import { state, inputSearch, screenList, screenCount, emptyState, sectionEl } from './state.js';
-import { buildScreenVarItem, buildScreenActionItem } from './builders.js';
+import { buildScreenVarItem, buildScreenActionItem, buildDataActionItem } from './builders.js';
 
 /** Render (or re-render) the screens list. */
 export function render() {
@@ -184,9 +184,13 @@ function buildScreenDetails(details, isCurrent, roles, screenUrl) {
   if (details.dataActions && details.dataActions.length > 0) {
     let items = "";
     for (const da of details.dataActions) {
-      items += `<div class="screen-detail-item">
-        <span class="screen-detail-name">${esc(da.name)}</span>
-      </div>`;
+      if (isCurrent && da.refreshMethodName) {
+        items += buildDataActionItem(da);
+      } else {
+        items += `<div class="screen-detail-item">
+          <span class="screen-detail-name">${esc(da.name)}</span>
+        </div>`;
+      }
     }
     html += buildSubSection(screenUrl, "dataActions", "Data Actions", {
       count: details.dataActions.length, html: items

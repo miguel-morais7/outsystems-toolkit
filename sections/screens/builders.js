@@ -103,6 +103,70 @@ export function buildScreenActionItem(action) {
 }
 
 /**
+ * Build an interactive data action item for the current screen.
+ * Shows the data action name, Run button, and output parameters (editable).
+ */
+export function buildDataActionItem(dataAction) {
+  const hasOutputs = dataAction.outputs && dataAction.outputs.length > 0;
+  const isExpanded = !!state.expandedDataActions[dataAction.refreshMethodName];
+
+  let html = `<div class="screen-action-item data-action-item ${isExpanded ? "expanded" : ""}" data-refresh-method="${escAttr(dataAction.refreshMethodName)}">`;
+  html += `<div class="screen-action-header data-action-header">`;
+  if (hasOutputs) {
+    html += `<svg class="screen-action-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`;
+  }
+  html += `<span class="screen-detail-name">${esc(dataAction.name)}</span>`;
+  html += `<button class="btn-trigger-action btn-trigger-data-action" data-refresh-method="${escAttr(dataAction.refreshMethodName)}" title="Refresh ${esc(dataAction.name)}">`;
+  html += `<svg class="action-play-icon" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg>`;
+  html += `<span class="action-btn-label">Run</span>`;
+  html += `</button>`;
+  html += `</div>`;
+
+  if (hasOutputs) {
+    html += `<div class="screen-action-body-wrap ${isExpanded ? "" : "collapsed"}">`;
+    html += `<div class="screen-action-body screen-action-inputs">`;
+    html += `<div class="screen-action-sub-header">Output Parameters</div>`;
+    for (const o of dataAction.outputs) {
+      html += buildDataActionOutputRow(o, dataAction.varAttrName);
+    }
+    html += `</div>`;
+    html += `</div>`;
+  }
+
+  html += `</div>`;
+  return html;
+}
+
+/**
+ * Build a single data action output parameter row with editable controls.
+ */
+export function buildDataActionOutputRow(output, varAttrName) {
+  const valueControl = buildTypeControl({
+    dataType: output.dataType,
+    value: output.value,
+    identifier: output.attrName,
+    identifierAttr: "data-output-attr-name",
+    inputClass: "data-action-output-input",
+    toggleClass: "data-action-output-toggle",
+    name: output.name,
+    varAttrName,
+    extraAttrs: `data-var-attr-name="${escAttr(varAttrName)}"`,
+  });
+
+  return `<div class="screen-detail-item screen-var-row data-action-output-row"
+               data-output-attr-name="${escAttr(output.attrName)}"
+               data-var-attr-name="${escAttr(varAttrName)}">
+    <div class="screen-var-info">
+      <span class="screen-detail-name">${esc(output.name)}</span>
+      <span class="screen-detail-type">${esc(output.dataType)}</span>
+    </div>
+    <div class="screen-var-value-wrap">
+      ${valueControl}
+    </div>
+  </div>`;
+}
+
+/**
  * Build a single action parameter row using the same layout as screen variable rows.
  */
 export function buildActionParamRow(param, methodName) {

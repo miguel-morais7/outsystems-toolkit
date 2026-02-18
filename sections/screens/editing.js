@@ -48,6 +48,47 @@ export async function commitScreenVarInput(input) {
   }
 }
 
+/** Send a SET_SCREEN_VAR_DEEP message for a data action output field. */
+export async function doSetDataActionOutput(varAttrName, outputAttrName, rawValue, dataType, rowEl) {
+  try {
+    const result = await sendMessage({
+      action: "SET_SCREEN_VAR_DEEP",
+      internalName: varAttrName,
+      path: [outputAttrName],
+      value: rawValue,
+      dataType,
+    });
+
+    if (!result || !result.ok) {
+      throw new Error(result?.error || "Failed to set output value.");
+    }
+
+    flashRow(rowEl, "saved");
+    toast("Output updated", "success");
+    return true;
+  } catch (err) {
+    flashRow(rowEl, "error");
+    toast(err.message, "error");
+    return false;
+  }
+}
+
+/** Commit a data action output input's value to the runtime. */
+export async function commitDataActionOutputInput(input) {
+  const row = input.closest(".data-action-output-row");
+  const varAttrName = input.dataset.varAttrName || row?.dataset.varAttrName;
+  const outputAttrName = input.dataset.outputAttrName;
+  if (!varAttrName || !outputAttrName) return;
+  const ok = await doSetDataActionOutput(
+    varAttrName, outputAttrName, input.value, input.dataset.type, row
+  );
+  if (ok) {
+    input.dataset.original = input.value;
+  } else {
+    input.value = input.dataset.original;
+  }
+}
+
 /** Update the cached variable value in the screen's details. */
 function updateCachedVarValue(internalName, newValue) {
   for (const screen of state.allScreens) {

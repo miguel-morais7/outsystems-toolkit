@@ -54,6 +54,7 @@ export async function toggleScreenExpand(screenUrl, flow, screenName) {
       if (isCurrent) {
         await fetchLiveValues(details);
         await enrichScreenActions(details);
+        await enrichDataActions(details);
       }
 
       // Store details directly on the screen object
@@ -129,6 +130,40 @@ async function enrichScreenActions(details) {
     }
   } catch (e) {
     console.warn("[Screens] Failed to enrich screen actions:", e.message);
+  }
+}
+
+/**
+ * Enrich data actions with runtime metadata from the live controller.
+ * This provides output parameter values and verifies refresh method availability.
+ */
+async function enrichDataActions(details) {
+  if (!details.dataActions || details.dataActions.length === 0) return;
+
+  try {
+    const result = await sendMessage({ action: "GET_DATA_ACTIONS" });
+    if (!result || !result.ok || !result.dataActions) return;
+
+    // Build a map of runtime data actions by normalized name
+    const runtimeMap = {};
+    for (const da of result.dataActions) {
+      runtimeMap[da.name.toLowerCase()] = da;
+    }
+
+    // Merge runtime data into statically-parsed data actions
+    for (const da of details.dataActions) {
+      const runtime = runtimeMap[da.name.toLowerCase()];
+      if (runtime) {
+        da.refreshMethodName = runtime.refreshMethodName;
+        da.varAttrName = runtime.varAttrName || da.varAttrName;
+        // Use runtime outputs if they have live values
+        if (runtime.outputs && runtime.outputs.length > 0) {
+          da.outputs = runtime.outputs;
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("[Screens] Failed to enrich data actions:", e.message);
   }
 }
 

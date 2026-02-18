@@ -62,6 +62,7 @@ async function ensurePageScriptInjected(tabId) {
         "pageScript/screenVars.js",
         "pageScript/screenActions.js",
         "pageScript/actionParams.js",
+        "pageScript/dataActions.js",
       ],
     });
   }
@@ -117,6 +118,8 @@ const PAGE_ACTIONS = {
   SET_ACTION_PARAM_DEEP:    { func: (m, a, p, v, t) => _osActionParamDeepSet(m, a, p, v, t),             args: msg => [msg.methodName, msg.attrName, msg.path, msg.value, msg.dataType] },
   ACTION_PARAM_LIST_APPEND: { func: (m, a, p, mx) => _osActionParamListAppend(m, a, p, mx),               args: msg => [msg.methodName, msg.attrName, msg.path || [], msg.maxListItems || 50] },
   ACTION_PARAM_LIST_DELETE:  { func: (m, a, p, i, mx) => _osActionParamListDelete(m, a, p, i, mx),        args: msg => [msg.methodName, msg.attrName, msg.path || [], msg.index, msg.maxListItems || 50] },
+  GET_DATA_ACTIONS:          { func: () => _osDataActionsGet(),                                           args: () => [] },
+  REFRESH_DATA_ACTION:       { func: (m) => _osDataActionRefresh(m),                                     args: msg => [msg.refreshMethodName] },
 };
 
 /**

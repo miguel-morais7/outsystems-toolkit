@@ -1,11 +1,13 @@
 /**
- * sections/screens/actions.js — Screen action invocation.
+ * sections/screens/actions.js — Screen action and data action invocation.
  *
- * Collects parameter values from the UI and triggers screen actions.
+ * Collects parameter values from the UI and triggers screen/data actions.
  */
 
 import { sendMessage } from '../../utils/helpers.js';
 import { flashRow, toast } from '../../utils/ui.js';
+import { state } from './state.js';
+import { buildDataActionOutputRow } from './builders.js';
 
 /**
  * Invoke a screen action via the trigger button.
@@ -68,6 +70,77 @@ export async function invokeScreenAction(triggerBtn) {
 
     flashRow(actionItem, "saved");
     toast("Action triggered", "success");
+  } catch (err) {
+    flashRow(actionItem, "error");
+    toast(err.message, "error");
+  } finally {
+    triggerBtn.disabled = false;
+    if (label) label.textContent = origLabel;
+    triggerBtn.classList.remove("running");
+  }
+}
+
+/**
+ * Refresh a data action and update its output values in the UI.
+ */
+export async function refreshDataAction(triggerBtn) {
+  const refreshMethodName = triggerBtn.dataset.refreshMethod;
+  const actionItem = triggerBtn.closest(".data-action-item");
+  if (!actionItem || !refreshMethodName) return;
+
+  // Visual feedback: show loading state
+  triggerBtn.disabled = true;
+  const label = triggerBtn.querySelector(".action-btn-label");
+  const origLabel = label ? label.textContent : "";
+  if (label) label.textContent = "...";
+  triggerBtn.classList.add("running");
+
+  try {
+    const result = await sendMessage({
+      action: "REFRESH_DATA_ACTION",
+      refreshMethodName,
+    });
+
+    if (!result || !result.ok) {
+      throw new Error(result?.error || "Data action failed.");
+    }
+
+    // Re-fetch output values to update the UI
+    const liveResult = await sendMessage({ action: "GET_DATA_ACTIONS" });
+    if (liveResult?.ok && liveResult.dataActions) {
+      const updated = liveResult.dataActions.find(
+        da => da.refreshMethodName === refreshMethodName
+      );
+      if (updated && updated.outputs) {
+        // Update cached details
+        for (const screen of state.allScreens) {
+          if (screen.details?.dataActions) {
+            const da = screen.details.dataActions.find(
+              d => d.refreshMethodName === refreshMethodName
+            );
+            if (da) {
+              da.outputs = updated.outputs;
+              da.varAttrName = updated.varAttrName || da.varAttrName;
+            }
+          }
+        }
+
+        // Re-render the output rows in place
+        const bodyWrap = actionItem.querySelector(".screen-action-body-wrap");
+        if (bodyWrap && updated.varAttrName) {
+          let outputsHtml = `<div class="screen-action-body screen-action-inputs">`;
+          outputsHtml += `<div class="screen-action-sub-header">Output Parameters</div>`;
+          for (const o of updated.outputs) {
+            outputsHtml += buildDataActionOutputRow(o, updated.varAttrName);
+          }
+          outputsHtml += `</div>`;
+          bodyWrap.innerHTML = outputsHtml;
+        }
+      }
+    }
+
+    flashRow(actionItem, "saved");
+    toast("Data action refreshed", "success");
   } catch (err) {
     flashRow(actionItem, "error");
     toast(err.message, "error");
