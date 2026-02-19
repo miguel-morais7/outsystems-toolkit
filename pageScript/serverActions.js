@@ -149,13 +149,7 @@ function _osServerActionInvoke(methodName, paramValues) {
           coercedArgs.push(typeof complexVal.clone === "function" ? complexVal.clone() : complexVal);
           continue;
         }
-        // Auto-create a default instance
-        var defaultVal = _createDefaultServerActionParam(ctrl, methodName, pv.paramName || pv.attrName);
-        if (defaultVal !== null && defaultVal !== undefined) {
-          coercedArgs.push(defaultVal);
-          continue;
-        }
-        return { ok: false, error: "Parameter '" + (pv.attrName || pv.paramName) + "': complex type not initialized." };
+        return { ok: false, error: "Parameter '" + pv.attrName + "': complex type not initialized. Use the inspect popup to set a value first." };
       }
       var coerced = _coerceValue(pv.value, pv.dataType);
       if (coerced.error) {
@@ -245,41 +239,4 @@ function _readServerActionOutputs(ctrl, methodName, resultObj) {
   } catch (_) { /* return whatever we have */ }
 
   return outputs;
-}
-
-/**
- * Create a default instance of a complex parameter for server action invocation.
- */
-function _createDefaultServerActionParam(ctrl, methodName, paramName) {
-  try {
-    var proto = Object.getPrototypeOf(ctrl);
-    var fn = proto[methodName];
-    if (typeof fn !== "function") return null;
-
-    var src = fn.toString();
-    // Look for the conversion pattern: ParamName: OS.DataConversion.ServerDataConverter.to(paramVar, ...)
-    // The paramVar in the function signature corresponds to this input
-    // Try to find what type constructor is used
-    var convPattern = new RegExp(
-      "\\w+\\s*:\\s*OS\\.DataConversion\\.ServerDataConverter\\.to\\s*\\(\\s*" +
-      paramName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') +
-      "\\s*,"
-    );
-    if (!convPattern.test(src)) return null;
-
-    // For complex types, try to create from the input's complexType if available
-    // Parse the signature to find the param index
-    var sigMatch = src.match(/^function\s*\(([^)]*)\)/);
-    if (!sigMatch) return null;
-
-    var allParams = sigMatch[1].split(",").map(function(p) { return p.trim(); }).filter(Boolean);
-    var paramIndex = allParams.indexOf(paramName);
-    if (paramIndex === -1) return null;
-
-    // We can't easily discover the complex type constructor from the server action alone,
-    // so return null and let the user initialize via the inspect popup
-    return null;
-  } catch (_) {
-    return null;
-  }
 }
