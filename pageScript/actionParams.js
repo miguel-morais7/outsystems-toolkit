@@ -486,7 +486,10 @@ function _evaluateModelExpression(model, expr) {
       if (mName === "getCurrent" && _isList(current)) {
         // getCurrent returns the current iteration item; use index 0,
         // falling back to emptyListItem for empty lists (default record)
-        var item = _listGet(current, 0);
+        var item = null;
+        if (_listCount(current) > 0) {
+          item = _listGet(current, 0);
+        }
         current = (item !== undefined && item !== null) ? item : current.emptyListItem;
         continue;
       }
