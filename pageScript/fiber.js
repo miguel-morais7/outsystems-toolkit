@@ -9,6 +9,7 @@
  *   - _findAllViewInstances()
  *   - _findViewInstanceByIndex(viewIndex)
  *   - _discoverBlocks()
+ *   - _findAllDataBlockMappings()
  *   - _getReactFiber()
  *   - _hasModelVariables()
  *   - _walkFiberForView()
@@ -304,6 +305,35 @@ function _findContentAreaViewInstances() {
 }
 
 /**
+ * Map ALL [data-block] elements on the page to their nearest view instance.
+ * Unlike _findContentAreaViewInstances (which only searches inside <main>),
+ * this searches the entire document so layout/structural blocks outside
+ * the content area also get names.
+ * Returns a Map of viewInstance → data-block attribute value.
+ */
+function _findAllDataBlockMappings() {
+  var blockEls = document.querySelectorAll("[data-block]");
+  var views = new Map();
+  for (var i = 0; i < blockEls.length; i++) {
+    var dataBlock = blockEls[i].getAttribute("data-block");
+    var fiber = _getReactFiber(blockEls[i]);
+    if (!fiber) continue;
+    var current = fiber;
+    while (current) {
+      if (_hasModelVariables(current.stateNode)) {
+        // First (nearest) data-block wins for each view instance
+        if (!views.has(current.stateNode)) {
+          views.set(current.stateNode, dataBlock || "");
+        }
+        break;
+      }
+      current = current.return;
+    }
+  }
+  return views;
+}
+
+/**
  * Extract the module path from a controller prototype by inspecting method
  * source code for registerVariableGroupType keys.
  * Returns e.g. "ILSEReactive.WebBlocks.DockActivities" or "" if unknown.
@@ -311,35 +341,22 @@ function _findContentAreaViewInstances() {
 function _extractModulePath(proto) {
   var methodNames = Object.getOwnPropertyNames(proto);
   for (var i = 0; i < methodNames.length; i++) {
-    var m = methodNames[i];
-    // Look for internal action implementations (_name$Action) or data fetch methods
-    if ((m.startsWith("_") && m.endsWith("$Action")) || m.endsWith("$ServerAction")) {
-      try {
-        var fn = proto[m];
-        if (typeof fn !== "function") continue;
-        var src = fn.toString();
-        var keyMatch = src.match(/getVariableGroupType\s*\(\s*"([^"]+)"/);
-        if (keyMatch) {
-          // Key format: "Module.Flow.Name.ActionName$vars"
-          var parts = keyMatch[1].split(".");
-          if (parts.length >= 3) {
-            // Remove the last part (ActionName$vars) to get module path
-            return parts.slice(0, -1).join(".");
-          }
+    if (methodNames[i] === "constructor") continue;
+    try {
+      var fn = proto[methodNames[i]];
+      if (typeof fn !== "function") continue;
+      var src = fn.toString();
+      // Key format: "Module.Flow.Name.ActionName$vars"
+      var keyMatch = src.match(/getVariableGroupType\s*\(\s*"([^"]+)"/);
+      if (keyMatch) {
+        var parts = keyMatch[1].split(".");
+        if (parts.length >= 3) {
+          // Remove the last part (ActionName$vars) to get module path
+          return parts.slice(0, -1).join(".");
         }
-      } catch (_) {}
-    }
+      }
+    } catch (_) {}
   }
-
-  // Fallback: try dataFetchActionNames
-  try {
-    var dfan = proto.dataFetchActionNames;
-    if (Array.isArray(dfan) && dfan.length > 0) {
-      // These are just method names like "getStuff$AggrRefresh", not paths
-      // but the registerVariableGroupType for these is also in the prototype
-    }
-  } catch (_) {}
-
   return "";
 }
 
@@ -383,8 +400,10 @@ function _osGetBlockTree() {
       return { ok: true, nodes: [] };
     }
 
-    // Tag which nodes are in the content area
+    // Content area views — used only for the isContentArea badge
     var contentViews = _findContentAreaViewInstances();
+    // ALL data-block mappings from entire document — used for name resolution
+    var allDataBlocks = _findAllDataBlockMappings();
 
     var nodes = [];
     for (var i = 0; i < all.length; i++) {
@@ -400,11 +419,8 @@ function _osGetBlockTree() {
         name = parts[parts.length - 1];
       }
 
-      // Fallback: use data-block attribute
-      var dataBlockAttr = "";
-      if (contentViews && contentViews.has(entry.viewInstance)) {
-        dataBlockAttr = contentViews.get(entry.viewInstance) || "";
-      }
+      // Fallback: use data-block attribute (searched across entire document)
+      var dataBlockAttr = allDataBlocks.get(entry.viewInstance) || "";
       if (!name && dataBlockAttr) {
         var attrParts = dataBlockAttr.split(".");
         name = attrParts[attrParts.length - 1];
