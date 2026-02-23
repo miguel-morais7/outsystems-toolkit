@@ -8,7 +8,7 @@
  *   - _findCurrentScreenViewInstance()
  *   - _findAllViewInstances()
  *   - _findViewInstanceByIndex(viewIndex)
- *   - _discoverBlocks()
+ *   - _osDiscoverBlocks()
  *   - _findAllDataBlockMappings()
  *   - _getReactFiber()
  *   - _hasModelVariables()
@@ -149,6 +149,11 @@ function _findAllViewInstances() {
 /**
  * DFS that collects ALL view instances (doesn't stop at first match).
  * Tracks parentViewIndex so callers can reconstruct the component hierarchy.
+ *
+ * React fiber trees use .child for the first child and .sibling for the
+ * next sibling at the same level.  We recurse on .child (depth + 1) and
+ * tail-recurse on .sibling (same depth, same parent) to avoid
+ * double-visiting nodes.
  */
 function _dfsCollectAllViews(fiber, results, depth, parentViewIndex) {
   if (!fiber) return;
@@ -166,14 +171,10 @@ function _dfsCollectAllViews(fiber, results, depth, parentViewIndex) {
     currentParent = thisIndex;
   }
 
-  // Children inherit current viewInstance as parent
+  // Children inherit current viewInstance as parent (one level deeper)
   _dfsCollectAllViews(fiber.child, results, depth + 1, currentParent);
-  // Siblings share the same parent as this fiber node
-  var sibling = fiber.sibling;
-  while (sibling) {
-    _dfsCollectAllViews(sibling, results, depth + 1, parentViewIndex);
-    sibling = sibling.sibling;
-  }
+  // Siblings are at the same depth and share this fiber's original parent
+  _dfsCollectAllViews(fiber.sibling, results, depth, parentViewIndex);
 }
 
 /**
@@ -214,6 +215,11 @@ function _findAllViewInstancesByDOMSearch() {
  * Find a specific view instance by its DFS index.
  * When viewIndex is undefined/null/0, falls back to _findCurrentScreenViewInstance()
  * for backward compatibility.
+ *
+ * NOTE: viewIndex is assigned by DFS traversal order, so it can shift if
+ * the fiber tree changes (e.g. conditional block render/unrender) between
+ * discovery and a later operation.  A future improvement could use
+ * modulePath as a stable secondary key for verification/fallback.
  */
 function _findViewInstanceByIndex(viewIndex) {
   if (viewIndex === undefined || viewIndex === null || viewIndex === 0) {
@@ -235,7 +241,7 @@ function _findViewInstanceByIndex(viewIndex) {
  * (header, menu, footer).  Falls back to all non-screen view instances
  * when the <main> element is not found.
  */
-function _discoverBlocks() {
+function _osDiscoverBlocks() {
   try {
     var all = _findAllViewInstances();
     if (all.length <= 1) {

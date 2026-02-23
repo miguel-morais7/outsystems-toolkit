@@ -66,11 +66,13 @@ export async function toggleBlockExpand(blockId, controllerModuleName) {
       // If this block is live, fetch runtime values and enrich with viewIndex
       if (isLive) {
         const viewIndex = liveBlock.viewIndex;
-        await fetchLiveValues(details, viewIndex);
-        await enrichScreenActions(details, viewIndex);
-        await enrichDataActions(details, viewIndex);
-        await enrichAggregates(details, viewIndex);
-        await enrichServerActions(details, viewIndex);
+        await Promise.all([
+          fetchLiveValues(details, viewIndex),
+          enrichScreenActions(details, viewIndex),
+          enrichDataActions(details, viewIndex),
+          enrichAggregates(details, viewIndex),
+          enrichServerActions(details, viewIndex),
+        ]);
       }
 
       // Store details on the block object

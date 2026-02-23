@@ -33,7 +33,7 @@ export function initBlockTreePopup(overlayEl) {
     /* Tree node expand/collapse */
     const header = e.target.closest(".block-tree-node-header");
     if (header) {
-      const chevron = header.querySelector(".block-tree-chevron");
+      const chevron = header.querySelector(".block-tree-chevron-wrap");
       const children = header.nextElementSibling;
       if (chevron && children && children.classList.contains("block-tree-children")) {
         chevron.classList.toggle("collapsed");

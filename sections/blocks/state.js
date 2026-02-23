@@ -34,6 +34,14 @@ export function setData(blocks, baseUrl, modName, liveBlocks) {
   state.screenBaseUrl = baseUrl || "";
   state.moduleName = modName || "";
   state.liveBlocks = liveBlocks || [];
+  state.expandedBlocks = {};
+  state.loadingBlocks = {};
+  state.expandedActions = {};
+  state.expandedDataActions = {};
+  state.expandedAggregates = {};
+  state.expandedServerActions = {};
+  state.collapsedSubSections = {};
+  state.collapsedBlockGroups = {};
 }
 
 /** Return counts for the status-bar summary. */

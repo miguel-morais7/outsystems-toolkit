@@ -249,7 +249,7 @@ export function init() {
       e.stopPropagation();
       const section = subHeader.closest(".screen-detail-section");
       if (section) {
-        const key = section.dataset.screenUrl + "::" + section.dataset.subKey;
+        const key = section.dataset.entityKey + "::" + section.dataset.subKey;
         state.collapsedSubSections[key] = !state.collapsedSubSections[key];
         section.classList.toggle("sub-collapsed", !!state.collapsedSubSections[key]);
         const body = section.querySelector(".screen-detail-body");

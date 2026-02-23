@@ -126,7 +126,7 @@ const PAGE_ACTIONS = {
   REFRESH_AGGREGATE:         { func: (m, vi) => _osAggregateRefresh(m, vi),                                        args: msg => [msg.refreshMethodName, msg.viewIndex] },
   GET_SERVER_ACTIONS:        { func: (vi) => _osServerActionsGet(vi),                                              args: msg => [msg.viewIndex] },
   INVOKE_SERVER_ACTION:      { func: (m, p, vi) => _osServerActionInvoke(m, p, vi),                               args: msg => [msg.methodName, msg.paramValues || [], msg.viewIndex] },
-  DISCOVER_BLOCKS:           { func: () => _discoverBlocks(),                                                       args: () => [] },
+  DISCOVER_BLOCKS:           { func: () => _osDiscoverBlocks(),                                                     args: () => [] },
   GET_BLOCK_TREE:            { func: () => _osGetBlockTree(),                                                       args: () => [] },
 };
 

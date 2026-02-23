@@ -53,11 +53,13 @@ export async function toggleScreenExpand(screenUrl, flow, screenName) {
 
       // If this is the current screen, fetch live runtime values and action metadata
       if (isCurrent) {
-        await fetchLiveValues(details);
-        await enrichScreenActions(details);
-        await enrichDataActions(details);
-        await enrichAggregates(details);
-        await enrichServerActions(details);
+        await Promise.all([
+          fetchLiveValues(details),
+          enrichScreenActions(details),
+          enrichDataActions(details),
+          enrichAggregates(details),
+          enrichServerActions(details),
+        ]);
       }
 
       // Store details directly on the screen object

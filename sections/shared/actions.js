@@ -54,7 +54,7 @@ function setButtonLoading(triggerBtn, loading) {
   if (loading) {
     triggerBtn.disabled = true;
     if (label) {
-      triggerBtn._origLabel = label.textContent;
+      if (!triggerBtn._origLabel) triggerBtn._origLabel = label.textContent;
       label.textContent = "...";
     }
     triggerBtn.classList.add("running");

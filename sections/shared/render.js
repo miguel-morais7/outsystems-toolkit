@@ -20,7 +20,7 @@ import { buildVarItem, buildClientActionItem, buildDataActionItem, buildAggregat
 export function buildSubSection(entityKey, key, title, contentHtml, collapsedSubSections) {
   const stateKey = entityKey + "::" + key;
   const isCollapsed = !!collapsedSubSections[stateKey];
-  let html = `<div class="screen-detail-section ${isCollapsed ? "sub-collapsed" : ""}" data-screen-url="${escAttr(entityKey)}" data-sub-key="${escAttr(key)}">`;
+  let html = `<div class="screen-detail-section ${isCollapsed ? "sub-collapsed" : ""}" data-entity-key="${escAttr(entityKey)}" data-sub-key="${escAttr(key)}">`;
   html += `<div class="screen-detail-header screen-detail-header-toggle">`;
   html += `<svg class="screen-sub-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`;
   html += `${esc(title)}<span class="count-badge screen-sub-count">${contentHtml.count}</span>`;
