@@ -426,7 +426,15 @@ function _osGetBlockTree() {
         name = attrParts[attrParts.length - 1];
       }
 
-      if (!name) name = i === 0 ? "Screen" : "Unknown Block";
+      if (!name) {
+        if (i === 0) {
+          // Screen root: extract name from URL path (e.g. /ModuleName/ScreenName)
+          var pathSegments = window.location.pathname.split("/").filter(Boolean);
+          name = pathSegments.length > 0 ? pathSegments[pathSegments.length - 1] : "Screen";
+        } else {
+          name = "Unknown Block";
+        }
+      }
 
       nodes.push({
         viewIndex: entry.viewIndex,
