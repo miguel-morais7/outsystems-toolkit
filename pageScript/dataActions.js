@@ -17,11 +17,11 @@
  *
  * @returns {Object} { ok, dataActions: [{ name, refreshMethodName, varAttrName, outputs }] }
  */
-function _osDataActionsGet() {
+function _osDataActionsGet(viewIndex) {
   try {
-    var viewInstance = _findCurrentScreenViewInstance();
+    var viewInstance = _findViewInstanceByIndex(viewIndex);
     if (!viewInstance) {
-      return { ok: false, error: "Could not find the active screen's view instance." };
+      return { ok: false, error: "Could not find the view instance." };
     }
 
     var ctrl = viewInstance.controller;
@@ -138,11 +138,11 @@ function _osDataActionsGet() {
  * @param {string} refreshMethodName - e.g. "dataAction1$DataActRefresh"
  * @returns {Promise<Object>} { ok: true } on success
  */
-function _osDataActionRefresh(refreshMethodName) {
+function _osDataActionRefresh(refreshMethodName, viewIndex) {
   try {
-    var viewInstance = _findCurrentScreenViewInstance();
+    var viewInstance = _findViewInstanceByIndex(viewIndex);
     if (!viewInstance) {
-      return { ok: false, error: "Could not find the active screen's view instance." };
+      return { ok: false, error: "Could not find the view instance." };
     }
 
     var ctrl = viewInstance.controller;

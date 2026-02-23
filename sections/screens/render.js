@@ -1,13 +1,14 @@
 /**
  * sections/screens/render.js — Rendering functions.
  *
- * Builds the full screen list HTML and delegates item building to builders.js.
+ * Builds the full screen list HTML. Delegates detail panel building
+ * to shared render/builder modules.
  */
 
 import { esc, escAttr } from '../../utils/helpers.js';
 import { show, hide } from '../../utils/ui.js';
+import { buildDetails } from '../shared/render.js';
 import { state, inputSearch, screenList, screenCount, emptyState, sectionEl } from './state.js';
-import { buildScreenVarItem, buildScreenActionItem, buildDataActionItem, buildAggregateItem, buildServerActionItem } from './builders.js';
 
 /** Render (or re-render) the screens list. */
 export function render() {
@@ -116,132 +117,22 @@ function buildScreenRow(s) {
     if (isLoading) {
       html += `<div class="screen-details-loading"><span class="mini-spinner"></span> Loading...</div>`;
     } else if (s.details) {
-      html += buildScreenDetails(s.details, isCurrent, s.roles, s.screenUrl);
+      html += buildDetails(
+        s.details,
+        isCurrent,
+        s.roles,
+        s.screenUrl,
+        state.collapsedSubSections,
+        {
+          actions: state.expandedActions,
+          dataActions: state.expandedDataActions,
+          aggregates: state.expandedAggregates,
+          serverActions: state.expandedServerActions,
+        },
+        buildRoleBadges
+      );
     }
     html += `</div>`;
-  }
-
-  return html;
-}
-
-function buildSubSection(screenUrl, key, title, contentHtml) {
-  const stateKey = screenUrl + "::" + key;
-  const isCollapsed = !!state.collapsedSubSections[stateKey];
-  let html = `<div class="screen-detail-section ${isCollapsed ? "sub-collapsed" : ""}" data-screen-url="${escAttr(screenUrl)}" data-sub-key="${escAttr(key)}">`;
-  html += `<div class="screen-detail-header screen-detail-header-toggle">`;
-  html += `<svg class="screen-sub-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`;
-  html += `${esc(title)}<span class="count-badge screen-sub-count">${contentHtml.count}</span>`;
-  html += `</div>`;
-  html += `<div class="screen-detail-body ${isCollapsed ? "collapsed" : ""}">${contentHtml.html}</div>`;
-  html += `</div>`;
-  return html;
-}
-
-function buildScreenDetails(details, isCurrent, roles, screenUrl) {
-  let html = "";
-
-  // Roles (skip if already shown inline as Public/Registered badge)
-  const isInlineRole = roles && roles.length === 1 && (roles[0] === 'Public' || roles[0] === 'Registered');
-  if (roles && roles.length > 0 && !isInlineRole) {
-    html += buildSubSection(screenUrl, "roles", "Roles", {
-      count: roles.length,
-      html: `<div class="screen-detail-item screen-roles-list">${buildRoleBadges(roles)}</div>`
-    });
-  }
-
-  // Input Parameters
-  if (details.inputParameters.length > 0) {
-    let items = "";
-    for (const v of details.inputParameters) items += buildScreenVarItem(v, isCurrent);
-    html += buildSubSection(screenUrl, "inputParams", "Input Parameters", {
-      count: details.inputParameters.length, html: items
-    });
-  }
-
-  // Local Variables
-  if (details.localVariables.length > 0) {
-    let items = "";
-    for (const v of details.localVariables) items += buildScreenVarItem(v, isCurrent);
-    html += buildSubSection(screenUrl, "localVars", "Local Variables", {
-      count: details.localVariables.length, html: items
-    });
-  }
-
-  // Aggregates
-  if (details.aggregates.length > 0) {
-    let items = "";
-    for (const a of details.aggregates) {
-      if (isCurrent && a.refreshMethodName) {
-        items += buildAggregateItem(a);
-      } else {
-        items += `<div class="screen-detail-item">
-          <span class="screen-detail-name">${esc(a.name)}</span>
-        </div>`;
-      }
-    }
-    html += buildSubSection(screenUrl, "aggregates", "Aggregates", {
-      count: details.aggregates.length, html: items
-    });
-  }
-
-  // Data Actions
-  if (details.dataActions && details.dataActions.length > 0) {
-    let items = "";
-    for (const da of details.dataActions) {
-      if (isCurrent && da.refreshMethodName) {
-        items += buildDataActionItem(da);
-      } else {
-        items += `<div class="screen-detail-item">
-          <span class="screen-detail-name">${esc(da.name)}</span>
-        </div>`;
-      }
-    }
-    html += buildSubSection(screenUrl, "dataActions", "Data Actions", {
-      count: details.dataActions.length, html: items
-    });
-  }
-
-  // Server Actions
-  if (details.serverActions.length > 0) {
-    let items = "";
-    for (const sa of details.serverActions) {
-      if (isCurrent && sa.methodName) {
-        items += buildServerActionItem(sa);
-      } else {
-        items += `<div class="screen-detail-item">
-          <span class="screen-detail-name">${esc(sa.name)}</span>
-        </div>`;
-      }
-    }
-    html += buildSubSection(screenUrl, "serverActions", "Server Actions", {
-      count: details.serverActions.length, html: items
-    });
-  }
-
-  // Screen Actions
-  if (details.screenActions.length > 0) {
-    let items = "";
-    for (const ca of details.screenActions) {
-      if (isCurrent && ca.methodName) {
-        items += buildScreenActionItem(ca);
-      } else {
-        items += `<div class="screen-detail-item">
-          <span class="screen-detail-name">${esc(ca.name)}</span>
-        </div>`;
-      }
-    }
-    html += buildSubSection(screenUrl, "screenActions", "Screen Actions", {
-      count: details.screenActions.length, html: items
-    });
-  }
-
-  // If no details at all
-  const hasDataActions = details.dataActions && details.dataActions.length > 0;
-  const hasRoles = roles && roles.length > 0 && !isInlineRole;
-  if (!hasRoles && details.inputParameters.length === 0 && details.localVariables.length === 0 &&
-    details.aggregates.length === 0 && !hasDataActions && details.serverActions.length === 0 &&
-    details.screenActions.length === 0) {
-    html += `<div class="screen-details-empty">No details found for this screen.</div>`;
   }
 
   return html;

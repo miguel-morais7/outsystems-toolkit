@@ -127,6 +127,30 @@
       <div id="screen-list" class="var-list"></div>
     </div>
 
+    <!-- Block list (populated dynamically) -->
+    <div id="block-section" class="section hidden">
+      <div class="section-header" data-section="blocks">
+        <svg class="section-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+        <span class="section-title">Blocks</span>
+        <span id="block-count" class="section-count">0</span>
+      </div>
+      <!-- Block search bar -->
+      <div class="producer-search-wrapper">
+        <div class="search-bar">
+          <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+          <input id="input-search-blocks" type="text" placeholder="Search blocks…" autocomplete="off" />
+        </div>
+      </div>
+      <div id="block-list" class="var-list"></div>
+    </div>
+
     <!-- Static Entities list (populated dynamically) -->
     <div id="static-entity-section" class="section hidden">
       <div class="section-header" data-section="staticEntities">

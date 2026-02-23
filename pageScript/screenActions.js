@@ -18,11 +18,11 @@
  *
  * @returns {Object} { ok, actions: [{ name, methodName, inputs, locals }] }
  */
-function _osScreenActionsGet() {
+function _osScreenActionsGet(viewIndex) {
   try {
-    var viewInstance = _findCurrentScreenViewInstance();
+    var viewInstance = _findViewInstanceByIndex(viewIndex);
     if (!viewInstance) {
-      return { ok: false, error: "Could not find the active screen's view instance." };
+      return { ok: false, error: "Could not find the view instance." };
     }
 
     var ctrl = viewInstance.controller;
@@ -234,11 +234,11 @@ function _createDefaultComplexParam(ctrl, methodName, attrName) {
  * @param {Array} paramValues - Array of {value, dataType} in param order
  * @returns {Object} { ok } or { ok, error }
  */
-function _osScreenActionInvoke(methodName, paramValues) {
+function _osScreenActionInvoke(methodName, paramValues, viewIndex) {
   try {
-    var viewInstance = _findCurrentScreenViewInstance();
+    var viewInstance = _findViewInstanceByIndex(viewIndex);
     if (!viewInstance) {
-      return { ok: false, error: "Could not find the active screen's view instance." };
+      return { ok: false, error: "Could not find the view instance." };
     }
 
     var ctrl = viewInstance.controller;

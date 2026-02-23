@@ -312,9 +312,38 @@ export async function fetchScreens(pageUrl) {
     }
   }
 
+  // Discover block .mvc.js files from urlVersions
+  // Blocks are any .mvc.js files that don't belong to a known screen
+  const screenControllerNames = new Set(
+    screens.map(s => s.controllerModuleName).filter(Boolean)
+  );
+  const blocks = [];
+  for (const [urlPath, version] of Object.entries(urlVersions)) {
+    if (!urlPath.endsWith(".mvc.js")) continue;
+    const fileMatch = urlPath.match(/\/scripts\/(.+)\.mvc\.js$/);
+    if (!fileMatch) continue;
+    const mvcModuleName = fileMatch[1];
+    const controllerName = mvcModuleName + ".mvc$controller";
+    // Skip screen mvc.js files (already handled above)
+    if (screenControllerNames.has(controllerName)) continue;
+    const parts = mvcModuleName.split(".");
+    const blockName = parts[parts.length - 1];
+    // Group is the parent path (e.g. "ILSEReactive.WebBlocks")
+    const group = parts.length > 1 ? parts.slice(0, -1).join(".") : parts[0];
+    blocks.push({
+      name: blockName,
+      mvcModuleName,
+      controllerModuleName: controllerName,
+      group,
+      fullName: mvcModuleName,
+    });
+  }
+  blocks.sort((a, b) => a.name.localeCompare(b.name));
+
   return {
     ok: true,
     screens,
+    blocks,
     moduleName,
     baseUrl,
     currentScreen,

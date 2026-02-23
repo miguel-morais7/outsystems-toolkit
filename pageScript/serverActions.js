@@ -17,7 +17,7 @@
  *
  * @returns {Object} { ok, serverActions: [{ name, methodName, inputs, outputs }] }
  */
-function _osServerActionsGet() {
+function _osServerActionsGet(viewIndex) {
   // Map raw type identifiers from source code to display names
   var SA_TYPE_MAP = {
     DateTime: "Date Time", LongInteger: "Long Integer", PhoneNumber: "Phone Number",
@@ -27,9 +27,9 @@ function _osServerActionsGet() {
   };
 
   try {
-    var viewInstance = _findCurrentScreenViewInstance();
+    var viewInstance = _findViewInstanceByIndex(viewIndex);
     if (!viewInstance) {
-      return { ok: false, error: "Could not find the active screen's view instance." };
+      return { ok: false, error: "Could not find the view instance." };
     }
 
     var ctrl = viewInstance.controller;
@@ -121,11 +121,11 @@ function _osServerActionsGet() {
  * @param {Array} paramValues - Array of {value, dataType, isComplex, attrName} in param order
  * @returns {Object} { ok, outputs } or { ok, error }
  */
-function _osServerActionInvoke(methodName, paramValues) {
+function _osServerActionInvoke(methodName, paramValues, viewIndex) {
   try {
-    var viewInstance = _findCurrentScreenViewInstance();
+    var viewInstance = _findViewInstanceByIndex(viewIndex);
     if (!viewInstance) {
-      return { ok: false, error: "Could not find the active screen's view instance." };
+      return { ok: false, error: "Could not find the view instance." };
     }
 
     var ctrl = viewInstance.controller;

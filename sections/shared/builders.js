@@ -1,21 +1,21 @@
 /**
- * sections/screens/builders.js — Item builder functions.
+ * sections/shared/builders.js — Shared item builder functions.
  *
- * Builds HTML for screen variable items, action items, and action parameter rows.
+ * Builds HTML for variable items, action items, and action parameter rows.
+ * Used by both screens and blocks sections.
  */
 
 import { esc, escAttr } from '../../utils/helpers.js';
 import { buildTypeControl } from '../../utils/typeControls.js';
-import { state } from './state.js';
 
 /**
  * Build a single variable/input param item.
- * If isCurrent is true and the variable has a live value, show editable controls.
+ * If isLive is true and the variable has a live value, show editable controls.
  */
-export function buildScreenVarItem(v, isCurrent) {
-  const hasLiveValue = isCurrent && v.value !== undefined;
+export function buildVarItem(v, isLive) {
+  const hasLiveValue = isLive && v.value !== undefined;
 
-  // If not the current screen or no live value, show simple display
+  // If not live or no live value, show simple display
   if (!hasLiveValue) {
     return `<div class="screen-detail-item">
       <span class="screen-detail-name">${esc(v.name)}</span>
@@ -23,7 +23,7 @@ export function buildScreenVarItem(v, isCurrent) {
     </div>`;
   }
 
-  // Current screen with live value — show editable control
+  // Live with value — show editable control
   const valueControl = buildTypeControl({
     dataType: v.type,
     value: v.value,
@@ -47,15 +47,18 @@ export function buildScreenVarItem(v, isCurrent) {
 }
 
 /**
- * Build an interactive action item for the current screen.
+ * Build an interactive action item.
  * Shows the action name, Run button, input parameters (editable),
  * and local variables (read-only display).
+ *
+ * @param {Object} action - The action object
+ * @param {Object} expandedActions - Map of methodName -> true/false
  */
-export function buildScreenActionItem(action) {
+export function buildClientActionItem(action, expandedActions) {
   const hasInputs = action.inputs && action.inputs.length > 0;
   const hasLocals = action.locals && action.locals.length > 0;
   const hasBody = hasInputs || hasLocals;
-  const isExpanded = !!state.expandedActions[action.methodName];
+  const isExpanded = !!expandedActions[action.methodName];
 
   let html = `<div class="screen-action-item ${isExpanded ? "expanded" : ""}" data-method="${escAttr(action.methodName)}">`;
   html += `<div class="screen-action-header">`;
@@ -103,12 +106,15 @@ export function buildScreenActionItem(action) {
 }
 
 /**
- * Build an interactive data action item for the current screen.
+ * Build an interactive data action item.
  * Shows the data action name, Run button, and output parameters (editable).
+ *
+ * @param {Object} dataAction - The data action object
+ * @param {Object} expandedDataActions - Map of refreshMethodName -> true/false
  */
-export function buildDataActionItem(dataAction) {
+export function buildDataActionItem(dataAction, expandedDataActions) {
   const hasOutputs = dataAction.outputs && dataAction.outputs.length > 0;
-  const isExpanded = !!state.expandedDataActions[dataAction.refreshMethodName];
+  const isExpanded = !!expandedDataActions[dataAction.refreshMethodName];
 
   let html = `<div class="screen-action-item data-action-item ${isExpanded ? "expanded" : ""}" data-refresh-method="${escAttr(dataAction.refreshMethodName)}">`;
   html += `<div class="screen-action-header data-action-header">`;
@@ -194,15 +200,18 @@ export function buildActionParamRow(param, methodName) {
 }
 
 /**
- * Build an interactive server action item for the current screen.
+ * Build an interactive server action item.
  * Shows the server action name, Run button, input parameters (editable),
  * and output parameters (read-only initially, values shown after invocation).
+ *
+ * @param {Object} serverAction - The server action object
+ * @param {Object} expandedServerActions - Map of methodName -> true/false
  */
-export function buildServerActionItem(serverAction) {
+export function buildServerActionItem(serverAction, expandedServerActions) {
   const hasInputs = serverAction.inputs && serverAction.inputs.length > 0;
   const hasOutputs = serverAction.outputs && serverAction.outputs.length > 0;
   const hasBody = hasInputs || hasOutputs;
-  const isExpanded = !!state.expandedServerActions[serverAction.methodName];
+  const isExpanded = !!expandedServerActions[serverAction.methodName];
 
   let html = `<div class="screen-action-item server-action-item ${isExpanded ? "expanded" : ""}" data-method="${escAttr(serverAction.methodName)}">`;
   html += `<div class="screen-action-header server-action-header">`;
@@ -283,13 +292,15 @@ export function buildServerActionOutputRow(output) {
 }
 
 /**
- * Build an interactive aggregate item for the current screen.
- * Shows the aggregate name, Run button, input variables (editable),
- * and output parameters (with inspect popup for RecordList).
+ * Build an interactive aggregate item.
+ * Shows the aggregate name, Run button, and output parameters.
+ *
+ * @param {Object} aggregate - The aggregate object
+ * @param {Object} expandedAggregates - Map of refreshMethodName -> true/false
  */
-export function buildAggregateItem(aggregate) {
+export function buildAggregateItem(aggregate, expandedAggregates) {
   const hasOutputs = aggregate.outputs && aggregate.outputs.length > 0;
-  const isExpanded = !!state.expandedAggregates[aggregate.refreshMethodName];
+  const isExpanded = !!expandedAggregates[aggregate.refreshMethodName];
 
   let html = `<div class="screen-action-item aggregate-item ${isExpanded ? "expanded" : ""}" data-refresh-method="${escAttr(aggregate.refreshMethodName)}">`;
   html += `<div class="screen-action-header aggregate-header">`;

@@ -13,7 +13,7 @@ import { flashRow, toast } from '../utils/ui.js';
 /*  State                                                              */
 /* ================================================================== */
 let popupOverlay = null;
-let popupState = null; // { internalName, name, type, basePath? } or { methodName, attrName, name, type, isActionParam: true }
+let popupState = null; // { internalName, name, type, basePath?, viewIndex? } or { methodName, attrName, name, type, isActionParam: true, viewIndex? }
 
 /* ================================================================== */
 /*  Public API                                                         */
@@ -135,8 +135,8 @@ export function initPopupListeners(overlayEl) {
  * Open the inspect popup for a complex type variable.
  * Sends INTROSPECT_SCREEN_VAR and renders the tree view.
  */
-export async function openVarPopup(internalName, name, type) {
-  popupState = { internalName, name, type };
+export async function openVarPopup(internalName, name, type, viewIndex) {
+  popupState = { internalName, name, type, viewIndex };
 
   // Show popup with loading state
   popupOverlay.innerHTML = `
@@ -165,6 +165,7 @@ export async function openVarPopup(internalName, name, type) {
     const result = await sendMessage({
       action: "INTROSPECT_SCREEN_VAR",
       internalName,
+      viewIndex: popupState.viewIndex,
     });
 
     if (!result || !result.ok) {
@@ -186,8 +187,8 @@ export async function openVarPopup(internalName, name, type) {
  * Open the inspect popup for a complex type action parameter.
  * Sends INIT_ACTION_PARAM to create a default value and render the tree.
  */
-export async function openActionParamPopup(methodName, attrName, name, type) {
-  popupState = { methodName, attrName, name, type, isActionParam: true };
+export async function openActionParamPopup(methodName, attrName, name, type, viewIndex) {
+  popupState = { methodName, attrName, name, type, isActionParam: true, viewIndex };
 
   // Show popup with loading state
   popupOverlay.innerHTML = `
@@ -216,6 +217,7 @@ export async function openActionParamPopup(methodName, attrName, name, type) {
       action: "INIT_ACTION_PARAM",
       methodName,
       attrName,
+      viewIndex: popupState.viewIndex,
     });
 
     if (!result || !result.ok) {
@@ -236,8 +238,8 @@ export async function openActionParamPopup(methodName, attrName, name, type) {
  * Open the inspect popup for a data action output parameter.
  * Introspects the data action record variable and navigates to the specific output sub-tree.
  */
-export async function openDataActionOutputPopup(varAttrName, outputAttrName, name, type) {
-  popupState = { internalName: varAttrName, basePath: [outputAttrName], name, type };
+export async function openDataActionOutputPopup(varAttrName, outputAttrName, name, type, viewIndex) {
+  popupState = { internalName: varAttrName, basePath: [outputAttrName], name, type, viewIndex };
 
   // Show popup with loading state
   popupOverlay.innerHTML = `
@@ -265,6 +267,7 @@ export async function openDataActionOutputPopup(varAttrName, outputAttrName, nam
     const result = await sendMessage({
       action: "INTROSPECT_SCREEN_VAR",
       internalName: varAttrName,
+      viewIndex: popupState.viewIndex,
     });
 
     if (!result || !result.ok) {
@@ -520,6 +523,7 @@ async function commitTreeLeaf(leafEl, newValue) {
         path,
         value: newValue,
         dataType,
+        viewIndex: popupState.viewIndex,
       });
     } else {
       // Prepend basePath for data action output sub-tree navigation
@@ -530,6 +534,7 @@ async function commitTreeLeaf(leafEl, newValue) {
         path: fullPath,
         value: newValue,
         dataType,
+        viewIndex: popupState.viewIndex,
       });
     }
 
@@ -587,6 +592,7 @@ async function handleListAppendClick(btn) {
         methodName: popupState.methodName,
         attrName: popupState.attrName,
         path,
+        viewIndex: popupState.viewIndex,
       });
     } else {
       const fullPath = popupState.basePath ? [...popupState.basePath, ...path] : path;
@@ -594,6 +600,7 @@ async function handleListAppendClick(btn) {
         action: "LIST_APPEND",
         internalName: popupState.internalName,
         path: fullPath,
+        viewIndex: popupState.viewIndex,
       });
     }
 
@@ -662,6 +669,7 @@ async function handleListDeleteClick(btn) {
         attrName: popupState.attrName,
         path,
         index,
+        viewIndex: popupState.viewIndex,
       });
     } else {
       const fullPath = popupState.basePath ? [...popupState.basePath, ...path] : path;
@@ -670,6 +678,7 @@ async function handleListDeleteClick(btn) {
         internalName: popupState.internalName,
         path: fullPath,
         index,
+        viewIndex: popupState.viewIndex,
       });
     }
 

@@ -1229,6 +1229,46 @@ body {
 }
 
 /* ------------------------------------------------------------------ */
+/*  BLOCK SECTION                                                      */
+/* ------------------------------------------------------------------ */
+
+.block-row .var-info {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+}
+
+.block-live-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  padding: 3px 8px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--color-red) 0%, var(--color-red-dark) 100%);
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(201, 42, 42, 0.3);
+  animation: pulse-badge 2s ease-in-out infinite;
+}
+
+.block-live {
+  background: linear-gradient(90deg, rgba(201, 42, 42, 0.08) 0%, rgba(255, 255, 255, 1) 100%);
+  border-left: 3px solid var(--color-red);
+  padding-left: 25px;
+}
+
+.block-live::before {
+  opacity: 1;
+  background: var(--color-red);
+}
+
+.block-live:hover {
+  background: linear-gradient(90deg, rgba(201, 42, 42, 0.12) 0%, rgba(255, 255, 255, 1) 100%);
+  box-shadow: 0 2px 12px rgba(201, 42, 42, 0.15);
+}
+
+/* ------------------------------------------------------------------ */
 /*  STATIC ENTITIES SECTION                                            */
 /* ------------------------------------------------------------------ */
 

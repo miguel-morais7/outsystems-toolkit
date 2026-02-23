@@ -18,11 +18,11 @@
  *
  * @returns {Object} { ok, aggregates: [{ name, refreshMethodName, varAttrName, inputs, outputs }] }
  */
-function _osAggregatesGet() {
+function _osAggregatesGet(viewIndex) {
   try {
-    var viewInstance = _findCurrentScreenViewInstance();
+    var viewInstance = _findViewInstanceByIndex(viewIndex);
     if (!viewInstance) {
-      return { ok: false, error: "Could not find the active screen's view instance." };
+      return { ok: false, error: "Could not find the view instance." };
     }
 
     var ctrl = viewInstance.controller;
@@ -148,11 +148,11 @@ function _osAggregatesGet() {
  * @param {string} refreshMethodName - e.g. "getEmployeeById$AggrRefresh"
  * @returns {Promise<Object>} { ok: true } on success
  */
-function _osAggregateRefresh(refreshMethodName) {
+function _osAggregateRefresh(refreshMethodName, viewIndex) {
   try {
-    var viewInstance = _findCurrentScreenViewInstance();
+    var viewInstance = _findViewInstanceByIndex(viewIndex);
     if (!viewInstance) {
-      return { ok: false, error: "Could not find the active screen's view instance." };
+      return { ok: false, error: "Could not find the view instance." };
     }
 
     var ctrl = viewInstance.controller;

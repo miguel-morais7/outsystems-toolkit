@@ -1,24 +1,19 @@
 /**
- * sections/screens/actions.js — Screen action and data action invocation.
+ * sections/shared/actions.js — Action invocation and refresh.
  *
- * Collects parameter values from the UI and triggers screen/data actions.
+ * Collects parameter values from the UI and triggers actions.
+ * Used by both screens and blocks sections.
  */
 
 import { sendMessage } from '../../utils/helpers.js';
 import { flashRow, toast } from '../../utils/ui.js';
-import { state } from './state.js';
 import { buildDataActionOutputRow, buildAggregateOutputRow, buildServerActionOutputRow } from './builders.js';
 
 /**
- * Invoke a screen action via the trigger button.
- * Collects param values from input parameter rows and sends INVOKE_SCREEN_ACTION.
+ * Collect parameter values from an action item's inputs section.
+ * Shared by invokeScreenAction and invokeServerAction.
  */
-export async function invokeScreenAction(triggerBtn) {
-  const methodName = triggerBtn.dataset.method;
-  const actionItem = triggerBtn.closest(".screen-action-item");
-  if (!actionItem) return;
-
-  // Collect parameter values from the inputs section only (not locals)
+function collectParamValues(actionItem) {
   const paramValues = [];
   const inputsSection = actionItem.querySelector(".screen-action-inputs");
   if (inputsSection) {
@@ -29,7 +24,6 @@ export async function invokeScreenAction(triggerBtn) {
       const popupBtn = row.querySelector(".btn-action-param-popup");
 
       if (popupBtn) {
-        // Complex type — value is stored in page's temp map
         paramValues.push({
           value: null,
           dataType: popupBtn.dataset.type || "Record",
@@ -49,19 +43,49 @@ export async function invokeScreenAction(triggerBtn) {
       }
     });
   }
+  return paramValues;
+}
 
-  // Visual feedback: show loading state
-  triggerBtn.disabled = true;
+/**
+ * Show/hide loading state on a trigger button.
+ */
+function setButtonLoading(triggerBtn, loading) {
   const label = triggerBtn.querySelector(".action-btn-label");
-  const origLabel = label ? label.textContent : "";
-  if (label) label.textContent = "...";
-  triggerBtn.classList.add("running");
+  if (loading) {
+    triggerBtn.disabled = true;
+    if (label) {
+      triggerBtn._origLabel = label.textContent;
+      label.textContent = "...";
+    }
+    triggerBtn.classList.add("running");
+  } else {
+    triggerBtn.disabled = false;
+    if (label) label.textContent = triggerBtn._origLabel || "Run";
+    triggerBtn.classList.remove("running");
+  }
+}
+
+/**
+ * Invoke a screen action via the trigger button.
+ *
+ * @param {Element} triggerBtn - The trigger button element
+ * @param {number} [viewIndex] - The view instance index
+ * @param {Function} [onCacheUpdate] - Optional callback to update cached details
+ */
+export async function invokeScreenAction(triggerBtn, viewIndex, onCacheUpdate) {
+  const methodName = triggerBtn.dataset.method;
+  const actionItem = triggerBtn.closest(".screen-action-item");
+  if (!actionItem) return;
+
+  const paramValues = collectParamValues(actionItem);
+  setButtonLoading(triggerBtn, true);
 
   try {
     const result = await sendMessage({
       action: "INVOKE_SCREEN_ACTION",
       methodName,
       paramValues,
+      viewIndex,
     });
 
     if (!result || !result.ok) {
@@ -74,31 +98,29 @@ export async function invokeScreenAction(triggerBtn) {
     flashRow(actionItem, "error");
     toast(err.message, "error");
   } finally {
-    triggerBtn.disabled = false;
-    if (label) label.textContent = origLabel;
-    triggerBtn.classList.remove("running");
+    setButtonLoading(triggerBtn, false);
   }
 }
 
 /**
  * Refresh a data action and update its output values in the UI.
+ *
+ * @param {Element} triggerBtn - The trigger button element
+ * @param {number} [viewIndex] - The view instance index
+ * @param {Function} [onCacheUpdate] - Callback to update cached details: (refreshMethodName, updated) => void
  */
-export async function refreshDataAction(triggerBtn) {
+export async function refreshDataAction(triggerBtn, viewIndex, onCacheUpdate) {
   const refreshMethodName = triggerBtn.dataset.refreshMethod;
   const actionItem = triggerBtn.closest(".data-action-item");
   if (!actionItem || !refreshMethodName) return;
 
-  // Visual feedback: show loading state
-  triggerBtn.disabled = true;
-  const label = triggerBtn.querySelector(".action-btn-label");
-  const origLabel = label ? label.textContent : "";
-  if (label) label.textContent = "...";
-  triggerBtn.classList.add("running");
+  setButtonLoading(triggerBtn, true);
 
   try {
     const result = await sendMessage({
       action: "REFRESH_DATA_ACTION",
       refreshMethodName,
+      viewIndex,
     });
 
     if (!result || !result.ok) {
@@ -106,24 +128,13 @@ export async function refreshDataAction(triggerBtn) {
     }
 
     // Re-fetch output values to update the UI
-    const liveResult = await sendMessage({ action: "GET_DATA_ACTIONS" });
+    const liveResult = await sendMessage({ action: "GET_DATA_ACTIONS", viewIndex });
     if (liveResult?.ok && liveResult.dataActions) {
       const updated = liveResult.dataActions.find(
         da => da.refreshMethodName === refreshMethodName
       );
       if (updated && updated.outputs) {
-        // Update cached details
-        for (const screen of state.allScreens) {
-          if (screen.details?.dataActions) {
-            const da = screen.details.dataActions.find(
-              d => d.refreshMethodName === refreshMethodName
-            );
-            if (da) {
-              da.outputs = updated.outputs;
-              da.varAttrName = updated.varAttrName || da.varAttrName;
-            }
-          }
-        }
+        if (onCacheUpdate) onCacheUpdate(refreshMethodName, updated);
 
         // Re-render the output rows in place
         const bodyWrap = actionItem.querySelector(".screen-action-body-wrap");
@@ -145,31 +156,29 @@ export async function refreshDataAction(triggerBtn) {
     flashRow(actionItem, "error");
     toast(err.message, "error");
   } finally {
-    triggerBtn.disabled = false;
-    if (label) label.textContent = origLabel;
-    triggerBtn.classList.remove("running");
+    setButtonLoading(triggerBtn, false);
   }
 }
 
 /**
  * Refresh an aggregate and update its output values in the UI.
+ *
+ * @param {Element} triggerBtn - The trigger button element
+ * @param {number} [viewIndex] - The view instance index
+ * @param {Function} [onCacheUpdate] - Callback to update cached details: (refreshMethodName, updated) => void
  */
-export async function refreshAggregate(triggerBtn) {
+export async function refreshAggregate(triggerBtn, viewIndex, onCacheUpdate) {
   const refreshMethodName = triggerBtn.dataset.refreshMethod;
   const actionItem = triggerBtn.closest(".aggregate-item");
   if (!actionItem || !refreshMethodName) return;
 
-  // Visual feedback: show loading state
-  triggerBtn.disabled = true;
-  const label = triggerBtn.querySelector(".action-btn-label");
-  const origLabel = label ? label.textContent : "";
-  if (label) label.textContent = "...";
-  triggerBtn.classList.add("running");
+  setButtonLoading(triggerBtn, true);
 
   try {
     const result = await sendMessage({
       action: "REFRESH_AGGREGATE",
       refreshMethodName,
+      viewIndex,
     });
 
     if (!result || !result.ok) {
@@ -177,24 +186,13 @@ export async function refreshAggregate(triggerBtn) {
     }
 
     // Re-fetch output values to update the UI
-    const liveResult = await sendMessage({ action: "GET_AGGREGATES" });
+    const liveResult = await sendMessage({ action: "GET_AGGREGATES", viewIndex });
     if (liveResult?.ok && liveResult.aggregates) {
       const updated = liveResult.aggregates.find(
         a => a.refreshMethodName === refreshMethodName
       );
       if (updated) {
-        // Update cached details
-        for (const screen of state.allScreens) {
-          if (screen.details?.aggregates) {
-            const aggr = screen.details.aggregates.find(
-              a => a.refreshMethodName === refreshMethodName
-            );
-            if (aggr) {
-              aggr.outputs = updated.outputs;
-              aggr.varAttrName = updated.varAttrName || aggr.varAttrName;
-            }
-          }
-        }
+        if (onCacheUpdate) onCacheUpdate(refreshMethodName, updated);
 
         // Re-render the output in place
         const bodyWrap = actionItem.querySelector(".screen-action-body-wrap");
@@ -216,65 +214,31 @@ export async function refreshAggregate(triggerBtn) {
     flashRow(actionItem, "error");
     toast(err.message, "error");
   } finally {
-    triggerBtn.disabled = false;
-    if (label) label.textContent = origLabel;
-    triggerBtn.classList.remove("running");
+    setButtonLoading(triggerBtn, false);
   }
 }
 
 /**
  * Invoke a server action via the trigger button.
- * Collects input param values and sends INVOKE_SERVER_ACTION.
- * On success, updates output parameter rows with returned values.
+ *
+ * @param {Element} triggerBtn - The trigger button element
+ * @param {number} [viewIndex] - The view instance index
+ * @param {Function} [onCacheUpdate] - Callback to update cached details: (methodName, outputs) => void
  */
-export async function invokeServerAction(triggerBtn) {
+export async function invokeServerAction(triggerBtn, viewIndex, onCacheUpdate) {
   const methodName = triggerBtn.dataset.method;
   const actionItem = triggerBtn.closest(".server-action-item");
   if (!actionItem) return;
 
-  // Collect parameter values from the inputs section
-  const paramValues = [];
-  const inputsSection = actionItem.querySelector(".screen-action-inputs");
-  if (inputsSection) {
-    const paramRows = inputsSection.querySelectorAll(".screen-action-param-row");
-    paramRows.forEach(row => {
-      const input = row.querySelector(".action-param-input");
-      const toggle = row.querySelector(".action-param-toggle");
-      const popupBtn = row.querySelector(".btn-action-param-popup");
-
-      if (popupBtn) {
-        paramValues.push({
-          value: null,
-          dataType: popupBtn.dataset.type || "Record",
-          attrName: popupBtn.dataset.attrName,
-          isComplex: true,
-        });
-      } else if (input) {
-        paramValues.push({
-          value: input.value,
-          dataType: input.dataset.type || "Text",
-        });
-      } else if (toggle) {
-        paramValues.push({
-          value: toggle.classList.contains("active"),
-          dataType: "Boolean",
-        });
-      }
-    });
-  }
-
-  // Visual feedback: show loading state
-  triggerBtn.disabled = true;
-  const label = triggerBtn.querySelector(".action-btn-label");
-  const origLabel = label ? label.textContent : "";
-  if (label) label.textContent = "...";
-  triggerBtn.classList.add("running");
+  const paramValues = collectParamValues(actionItem);
+  setButtonLoading(triggerBtn, true);
 
   try {
     const result = await sendMessage({
       action: "INVOKE_SERVER_ACTION",
       methodName,
       paramValues,
+      viewIndex,
     });
 
     if (!result || !result.ok) {
@@ -283,17 +247,7 @@ export async function invokeServerAction(triggerBtn) {
 
     // Update output parameter rows with returned values
     if (result.outputs && result.outputs.length > 0) {
-      // Update cached details
-      for (const screen of state.allScreens) {
-        if (screen.details?.serverActions) {
-          const sa = screen.details.serverActions.find(
-            s => s.methodName === methodName
-          );
-          if (sa) {
-            sa.outputs = result.outputs;
-          }
-        }
-      }
+      if (onCacheUpdate) onCacheUpdate(methodName, result.outputs);
 
       // Re-render the output rows in place
       const outputsSection = actionItem.querySelector(".server-action-outputs");
@@ -312,8 +266,6 @@ export async function invokeServerAction(triggerBtn) {
     flashRow(actionItem, "error");
     toast(err.message, "error");
   } finally {
-    triggerBtn.disabled = false;
-    if (label) label.textContent = origLabel;
-    triggerBtn.classList.remove("running");
+    setButtonLoading(triggerBtn, false);
   }
 }

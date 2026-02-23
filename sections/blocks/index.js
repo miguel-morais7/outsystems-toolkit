@@ -1,26 +1,53 @@
 /**
- * sections/screens/index.js — Entry point: init() + re-exports.
+ * sections/blocks/index.js — Entry point: init() + re-exports.
  *
  * Wires up all event listeners and re-exports the public API
  * expected by sidepanel.js: { sectionEl, init, setData, getState, render }.
  */
 
-import { debounce, sendMessage } from '../../utils/helpers.js';
-import { initPopupListeners, openVarPopup, openActionParamPopup, openDataActionOutputPopup } from '../screenVarPopup.js';
+import { debounce } from '../../utils/helpers.js';
+import { openVarPopup, openActionParamPopup, openDataActionOutputPopup } from '../screenVarPopup.js';
 import { doSetVar, commitVarInput, doSetDataActionOutput, commitDataActionOutputInput } from '../shared/editing.js';
 import { invokeScreenAction, refreshDataAction, refreshAggregate, invokeServerAction } from '../shared/actions.js';
-import { state, inputSearch, screenList } from './state.js';
+import { state, inputSearch, blockList } from './state.js';
 import { render } from './render.js';
-import { toggleScreenExpand } from './data.js';
+import { toggleBlockExpand } from './data.js';
 
 export { sectionEl, setData, getState } from './state.js';
 export { render } from './render.js';
 
-/** Update the cached variable value in the screen's details. */
+/**
+ * Get the viewIndex for the block that contains the given element.
+ */
+function getViewIndex(el) {
+  const blockRow = el.closest(".block-row") || el.closest(".screen-details")?.previousElementSibling;
+  if (blockRow && blockRow.dataset.viewIndex) {
+    return parseInt(blockRow.dataset.viewIndex, 10);
+  }
+  // Walk up to find the block row via the details panel
+  let sibling = el.closest(".screen-details");
+  if (sibling) {
+    const row = sibling.previousElementSibling;
+    if (row && row.dataset.viewIndex) {
+      return parseInt(row.dataset.viewIndex, 10);
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Get the blockId for a given element by walking up to the block row.
+ */
+function getBlockId(el) {
+  const blockRow = el.closest(".block-row") || el.closest(".screen-details")?.previousElementSibling;
+  return blockRow?.dataset.blockId;
+}
+
+/** Update the cached variable value in the block's details. */
 function updateCachedVarValue(internalName, newValue) {
-  for (const screen of state.allScreens) {
-    if (screen.details) {
-      for (const v of [...screen.details.inputParameters, ...screen.details.localVariables]) {
+  for (const block of state.allBlocks) {
+    if (block.details) {
+      for (const v of [...block.details.inputParameters, ...block.details.localVariables]) {
         if (v.internalName === internalName) {
           v.value = newValue;
           return;
@@ -32,9 +59,9 @@ function updateCachedVarValue(internalName, newValue) {
 
 /** Update cached data action details after refresh. */
 function updateCachedDataAction(refreshMethodName, updated) {
-  for (const screen of state.allScreens) {
-    if (screen.details?.dataActions) {
-      const da = screen.details.dataActions.find(d => d.refreshMethodName === refreshMethodName);
+  for (const block of state.allBlocks) {
+    if (block.details?.dataActions) {
+      const da = block.details.dataActions.find(d => d.refreshMethodName === refreshMethodName);
       if (da) {
         da.outputs = updated.outputs;
         da.varAttrName = updated.varAttrName || da.varAttrName;
@@ -45,9 +72,9 @@ function updateCachedDataAction(refreshMethodName, updated) {
 
 /** Update cached aggregate details after refresh. */
 function updateCachedAggregate(refreshMethodName, updated) {
-  for (const screen of state.allScreens) {
-    if (screen.details?.aggregates) {
-      const aggr = screen.details.aggregates.find(a => a.refreshMethodName === refreshMethodName);
+  for (const block of state.allBlocks) {
+    if (block.details?.aggregates) {
+      const aggr = block.details.aggregates.find(a => a.refreshMethodName === refreshMethodName);
       if (aggr) {
         aggr.outputs = updated.outputs;
         aggr.varAttrName = updated.varAttrName || aggr.varAttrName;
@@ -58,9 +85,9 @@ function updateCachedAggregate(refreshMethodName, updated) {
 
 /** Update cached server action details after invocation. */
 function updateCachedServerAction(methodName, outputs) {
-  for (const screen of state.allScreens) {
-    if (screen.details?.serverActions) {
-      const sa = screen.details.serverActions.find(s => s.methodName === methodName);
+  for (const block of state.allBlocks) {
+    if (block.details?.serverActions) {
+      const sa = block.details.serverActions.find(s => s.methodName === methodName);
       if (sa) {
         sa.outputs = outputs;
       }
@@ -72,12 +99,12 @@ function updateCachedServerAction(methodName, outputs) {
 export function init() {
   inputSearch.addEventListener("input", debounce(render, 150));
 
-  screenList.addEventListener("click", (e) => {
-    // Inspect popup icon for complex screen variables
+  blockList.addEventListener("click", (e) => {
+    // Inspect popup icon for complex variables
     const popupBtn = e.target.closest(".btn-var-popup");
     if (popupBtn) {
       e.stopPropagation();
-      openVarPopup(popupBtn.dataset.internalName, popupBtn.dataset.name, popupBtn.dataset.type);
+      openVarPopup(popupBtn.dataset.internalName, popupBtn.dataset.name, popupBtn.dataset.type, getViewIndex(popupBtn));
       return;
     }
 
@@ -89,7 +116,8 @@ export function init() {
         actionPopupBtn.dataset.method,
         actionPopupBtn.dataset.attrName,
         actionPopupBtn.dataset.name,
-        actionPopupBtn.dataset.type
+        actionPopupBtn.dataset.type,
+        getViewIndex(actionPopupBtn)
       );
       return;
     }
@@ -102,20 +130,13 @@ export function init() {
         daOutputPopupBtn.dataset.varAttrName,
         daOutputPopupBtn.dataset.outputAttrName,
         daOutputPopupBtn.dataset.name,
-        daOutputPopupBtn.dataset.type
+        daOutputPopupBtn.dataset.type,
+        getViewIndex(daOutputPopupBtn)
       );
       return;
     }
 
-    // Navigate button
-    const navBtn = e.target.closest(".btn-navigate");
-    if (navBtn) {
-      e.stopPropagation();
-      sendMessage({ action: "NAVIGATE", url: navBtn.dataset.url });
-      return;
-    }
-
-    // Boolean toggle for screen vars
+    // Boolean toggle for block vars
     const boolBtn = e.target.closest(".screen-var-toggle:not([disabled])");
     if (boolBtn) {
       e.stopPropagation();
@@ -123,7 +144,7 @@ export function init() {
       const newVal = !isActive;
       boolBtn.classList.toggle("active", newVal);
       const row = boolBtn.closest(".screen-var-row");
-      doSetVar(boolBtn.dataset.internalName, newVal, "Boolean", row, undefined, updateCachedVarValue);
+      doSetVar(boolBtn.dataset.internalName, newVal, "Boolean", row, getViewIndex(boolBtn), updateCachedVarValue);
       return;
     }
 
@@ -131,7 +152,7 @@ export function init() {
     const aggrTriggerBtn = e.target.closest(".btn-trigger-aggregate");
     if (aggrTriggerBtn) {
       e.stopPropagation();
-      refreshAggregate(aggrTriggerBtn, undefined, updateCachedAggregate);
+      refreshAggregate(aggrTriggerBtn, getViewIndex(aggrTriggerBtn), updateCachedAggregate);
       return;
     }
 
@@ -139,7 +160,7 @@ export function init() {
     const daTriggerBtn = e.target.closest(".btn-trigger-data-action");
     if (daTriggerBtn) {
       e.stopPropagation();
-      refreshDataAction(daTriggerBtn, undefined, updateCachedDataAction);
+      refreshDataAction(daTriggerBtn, getViewIndex(daTriggerBtn), updateCachedDataAction);
       return;
     }
 
@@ -147,7 +168,7 @@ export function init() {
     const serverTriggerBtn = e.target.closest(".btn-trigger-server-action");
     if (serverTriggerBtn) {
       e.stopPropagation();
-      invokeServerAction(serverTriggerBtn, undefined, updateCachedServerAction);
+      invokeServerAction(serverTriggerBtn, getViewIndex(serverTriggerBtn), updateCachedServerAction);
       return;
     }
 
@@ -155,7 +176,7 @@ export function init() {
     const triggerBtn = e.target.closest(".btn-trigger-action");
     if (triggerBtn) {
       e.stopPropagation();
-      invokeScreenAction(triggerBtn);
+      invokeScreenAction(triggerBtn, getViewIndex(triggerBtn));
       return;
     }
 
@@ -230,7 +251,7 @@ export function init() {
       doSetDataActionOutput(
         row?.dataset.varAttrName,
         daOutputToggle.dataset.outputAttrName,
-        newVal, "Boolean", row
+        newVal, "Boolean", row, getViewIndex(daOutputToggle)
       );
       return;
     }
@@ -258,13 +279,12 @@ export function init() {
       return;
     }
 
-    // Screen row expand/collapse (click on the row itself, not navigate button)
-    const screenRow = e.target.closest(".screen-row");
-    if (screenRow && !e.target.closest(".btn-navigate")) {
-      const screenUrl = screenRow.dataset.screenUrl;
-      const flow = screenRow.dataset.flow;
-      const name = screenRow.dataset.name;
-      toggleScreenExpand(screenUrl, flow, name);
+    // Block row expand/collapse
+    const blockRow = e.target.closest(".block-row");
+    if (blockRow) {
+      const blockId = blockRow.dataset.blockId;
+      const controllerModule = blockRow.dataset.controllerModule;
+      toggleBlockExpand(blockId, controllerModule);
       return;
     }
 
@@ -275,25 +295,25 @@ export function init() {
       const body = header.nextElementSibling;
       const isCollapsed = header.classList.toggle("collapsed");
       body.classList.toggle("collapsed", isCollapsed);
-      state.collapsedScreenFlows[mod] = isCollapsed;
+      state.collapsedBlockGroups[mod] = isCollapsed;
     }
   });
 
   /* Keyboard: Enter -> save, Escape -> revert */
-  screenList.addEventListener("keydown", (e) => {
+  blockList.addEventListener("keydown", (e) => {
     // Data action output inputs
     const daInput = e.target.closest("input.data-action-output-input:not([readonly])");
     if (daInput) {
-      if (e.key === "Enter") { e.preventDefault(); commitDataActionOutputInput(daInput); }
+      if (e.key === "Enter") { e.preventDefault(); commitDataActionOutputInput(daInput, getViewIndex(daInput)); }
       if (e.key === "Escape") { daInput.value = daInput.dataset.original; daInput.blur(); }
       return;
     }
-    // Screen variable inputs
+    // Variable inputs
     const input = e.target.closest("input.screen-var-input:not([readonly])");
     if (!input) return;
     if (e.key === "Enter") {
       e.preventDefault();
-      commitVarInput(input, undefined, updateCachedVarValue);
+      commitVarInput(input, getViewIndex(input), updateCachedVarValue);
     }
     if (e.key === "Escape") {
       input.value = input.dataset.original;
@@ -302,34 +322,30 @@ export function init() {
   });
 
   /* Blur -> save if value changed */
-  screenList.addEventListener("focusout", (e) => {
+  blockList.addEventListener("focusout", (e) => {
     const daInput = e.target.closest("input.data-action-output-input:not([readonly])");
     if (daInput) {
-      if (daInput.value !== daInput.dataset.original) commitDataActionOutputInput(daInput);
+      if (daInput.value !== daInput.dataset.original) commitDataActionOutputInput(daInput, getViewIndex(daInput));
       return;
     }
     const input = e.target.closest("input.screen-var-input:not([readonly])");
     if (!input) return;
     if (input.value !== input.dataset.original) {
-      commitVarInput(input, undefined, updateCachedVarValue);
+      commitVarInput(input, getViewIndex(input), updateCachedVarValue);
     }
   });
 
   /* Date/time/datetime pickers fire "change" */
-  screenList.addEventListener("change", (e) => {
-    // Data action output date inputs have both classes
+  blockList.addEventListener("change", (e) => {
     const daDateInput = e.target.closest("input.data-action-output-input.screen-var-date:not([readonly])");
     if (daDateInput) {
-      if (daDateInput.value !== daDateInput.dataset.original) commitDataActionOutputInput(daDateInput);
+      if (daDateInput.value !== daDateInput.dataset.original) commitDataActionOutputInput(daDateInput, getViewIndex(daDateInput));
       return;
     }
     const input = e.target.closest("input.screen-var-date:not([readonly])");
     if (!input) return;
     if (input.value !== input.dataset.original) {
-      commitVarInput(input, undefined, updateCachedVarValue);
+      commitVarInput(input, getViewIndex(input), updateCachedVarValue);
     }
   });
-
-  /* ---- Popup event listeners (delegated to screenVarPopup module) ---- */
-  initPopupListeners(document.getElementById("var-popup-overlay"));
 }

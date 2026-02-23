@@ -22,11 +22,12 @@
  * @param {Array} varDefs - Array of {name, internalName, type, isInput}
  * @returns {Object} { ok, variables: [{name, internalName, type, isInput, value, readOnly}] }
  */
-function _osScreenVarsGet(varDefs) {
+function _osScreenVarsGet(varDefs, viewIndex) {
   try {
-    const model = _findCurrentScreenModel();
+    const vi = _findViewInstanceByIndex(viewIndex);
+    const model = vi ? vi.model : null;
     if (!model) {
-      return { ok: false, error: "Could not find the active screen's model. Is the screen loaded?" };
+      return { ok: false, error: "Could not find the view instance's model." };
     }
 
     const READ_ONLY_TYPES = ["RecordList", "Record", "Object", "BinaryData"];
@@ -69,11 +70,11 @@ function _osScreenVarsGet(varDefs) {
  * @param {string} dataType - The OS data type
  * @returns {Object} { ok, newValue }
  */
-function _osScreenVarsSet(internalName, rawValue, dataType) {
+function _osScreenVarsSet(internalName, rawValue, dataType, viewIndex) {
   try {
-    const viewInstance = _findCurrentScreenViewInstance();
+    const viewInstance = _findViewInstanceByIndex(viewIndex);
     if (!viewInstance) {
-      return { ok: false, error: "Could not find the active screen's view instance." };
+      return { ok: false, error: "Could not find the view instance." };
     }
 
     const model = viewInstance.model;
@@ -111,11 +112,12 @@ function _osScreenVarsSet(internalName, rawValue, dataType) {
  * @param {number} [maxListItems=50] - Max items to read from lists
  * @returns {Object} { ok, tree }
  */
-function _osScreenVarIntrospect(internalName, maxListItems) {
+function _osScreenVarIntrospect(internalName, maxListItems, viewIndex) {
   try {
-    const model = _findCurrentScreenModel();
+    const vi = _findViewInstanceByIndex(viewIndex);
+    const model = vi ? vi.model : null;
     if (!model) {
-      return { ok: false, error: "Could not find the active screen's model." };
+      return { ok: false, error: "Could not find the view instance's model." };
     }
 
     const raw = model.variables[internalName];
@@ -140,11 +142,11 @@ function _osScreenVarIntrospect(internalName, maxListItems) {
  * @param {string} dataType - OS data type for coercion
  * @returns {Object} { ok, newValue }
  */
-function _osScreenVarDeepSet(internalName, path, rawValue, dataType) {
+function _osScreenVarDeepSet(internalName, path, rawValue, dataType, viewIndex) {
   try {
-    const viewInstance = _findCurrentScreenViewInstance();
+    const viewInstance = _findViewInstanceByIndex(viewIndex);
     if (!viewInstance) {
-      return { ok: false, error: "Could not find the active screen's view instance." };
+      return { ok: false, error: "Could not find the view instance." };
     }
 
     const model = viewInstance.model;
@@ -228,11 +230,11 @@ function _osScreenVarDeepSet(internalName, path, rawValue, dataType) {
  * @param {number} [maxListItems=50] - Max items for re-introspection
  * @returns {Object} { ok, tree }
  */
-function _osScreenVarListAppend(internalName, path, maxListItems) {
+function _osScreenVarListAppend(internalName, path, maxListItems, viewIndex) {
   try {
-    const viewInstance = _findCurrentScreenViewInstance();
+    const viewInstance = _findViewInstanceByIndex(viewIndex);
     if (!viewInstance) {
-      return { ok: false, error: "Could not find the active screen's view instance." };
+      return { ok: false, error: "Could not find the view instance." };
     }
 
     const model = viewInstance.model;
@@ -270,11 +272,11 @@ function _osScreenVarListAppend(internalName, path, maxListItems) {
  * @param {number} [maxListItems=50] - Max items for re-introspection
  * @returns {Object} { ok, tree }
  */
-function _osScreenVarListDelete(internalName, path, index, maxListItems) {
+function _osScreenVarListDelete(internalName, path, index, maxListItems, viewIndex) {
   try {
-    const viewInstance = _findCurrentScreenViewInstance();
+    const viewInstance = _findViewInstanceByIndex(viewIndex);
     if (!viewInstance) {
-      return { ok: false, error: "Could not find the active screen's view instance." };
+      return { ok: false, error: "Could not find the view instance." };
     }
 
     const model = viewInstance.model;

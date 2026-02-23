@@ -41,11 +41,11 @@ function _cleanupActionParams(methodName) {
  * @param {number} [maxListItems=50]
  * @returns {Object} { ok, tree }
  */
-function _osActionParamInit(methodName, attrName, maxListItems) {
+function _osActionParamInit(methodName, attrName, maxListItems, viewIndex) {
   try {
-    var viewInstance = _findCurrentScreenViewInstance();
+    var viewInstance = _findViewInstanceByIndex(viewIndex);
     if (!viewInstance) {
-      return { ok: false, error: "Could not find the active screen's view instance." };
+      return { ok: false, error: "Could not find the view instance." };
     }
 
     var ctrl = viewInstance.controller;
