@@ -7,6 +7,7 @@
 
 import { debounce } from '../../utils/helpers.js';
 import { openVarPopup, openActionParamPopup, openDataActionOutputPopup } from '../screenVarPopup.js';
+import { initBlockTreePopup, openBlockTreePopup } from '../blockTreePopup.js';
 import { doSetVar, commitVarInput, doSetDataActionOutput, commitDataActionOutputInput } from '../shared/editing.js';
 import { invokeScreenAction, refreshDataAction, refreshAggregate, invokeServerAction } from '../shared/actions.js';
 import { state, inputSearch, blockList } from './state.js';
@@ -98,6 +99,7 @@ function updateCachedServerAction(methodName, outputs) {
 /** Wire up event listeners. Call once at startup. */
 export function init() {
   inputSearch.addEventListener("input", debounce(render, 150));
+  initBlockTreePopup(document.getElementById("block-tree-overlay"));
 
   blockList.addEventListener("click", (e) => {
     // Inspect popup icon for complex variables
@@ -276,6 +278,16 @@ export function init() {
         const body = section.querySelector(".screen-detail-body");
         if (body) body.classList.toggle("collapsed", !!state.collapsedSubSections[key]);
       }
+      return;
+    }
+
+    // Block tree popup button
+    const treeBtn = e.target.closest(".btn-block-tree");
+    if (treeBtn) {
+      e.stopPropagation();
+      const viewIndex = parseInt(treeBtn.dataset.viewIndex, 10);
+      const blockName = treeBtn.dataset.blockName || "Block";
+      openBlockTreePopup(viewIndex, blockName);
       return;
     }
 

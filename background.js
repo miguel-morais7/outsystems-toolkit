@@ -127,6 +127,7 @@ const PAGE_ACTIONS = {
   GET_SERVER_ACTIONS:        { func: (vi) => _osServerActionsGet(vi),                                              args: msg => [msg.viewIndex] },
   INVOKE_SERVER_ACTION:      { func: (m, p, vi) => _osServerActionInvoke(m, p, vi),                               args: msg => [msg.methodName, msg.paramValues || [], msg.viewIndex] },
   DISCOVER_BLOCKS:           { func: () => _discoverBlocks(),                                                       args: () => [] },
+  GET_BLOCK_TREE:            { func: () => _osGetBlockTree(),                                                       args: () => [] },
 };
 
 /**

@@ -15,6 +15,7 @@
  *   - _dfsForView()
  *   - _dfsCollectAllViews()
  *   - _findViewInstanceByDOMSearch()
+ *   - _osGetBlockTree()
  */
 
 /**
@@ -120,7 +121,7 @@ function _dfsForView(fiber) {
 
 /**
  * Find ALL view instances (screen + blocks) by DFS through the fiber tree.
- * Returns array of { viewInstance, viewIndex, depth }.
+ * Returns array of { viewInstance, viewIndex, depth, parentViewIndex }.
  * Index 0 is the screen (first found); 1+ are blocks.
  */
 function _findAllViewInstances() {
@@ -140,28 +141,36 @@ function _findAllViewInstances() {
   while (rootFiber.return) rootFiber = rootFiber.return;
 
   var results = [];
-  _dfsCollectAllViews(rootFiber, results, 0);
+  _dfsCollectAllViews(rootFiber, results, 0, -1);
   return results;
 }
 
 /**
  * DFS that collects ALL view instances (doesn't stop at first match).
+ * Tracks parentViewIndex so callers can reconstruct the component hierarchy.
  */
-function _dfsCollectAllViews(fiber, results, depth) {
+function _dfsCollectAllViews(fiber, results, depth, parentViewIndex) {
   if (!fiber) return;
 
+  var currentParent = parentViewIndex;
+
   if (_hasModelVariables(fiber.stateNode)) {
+    var thisIndex = results.length;
     results.push({
       viewInstance: fiber.stateNode,
-      viewIndex: results.length,
+      viewIndex: thisIndex,
       depth: depth,
+      parentViewIndex: parentViewIndex,
     });
+    currentParent = thisIndex;
   }
 
-  _dfsCollectAllViews(fiber.child, results, depth + 1);
+  // Children inherit current viewInstance as parent
+  _dfsCollectAllViews(fiber.child, results, depth + 1, currentParent);
+  // Siblings share the same parent as this fiber node
   var sibling = fiber.sibling;
   while (sibling) {
-    _dfsCollectAllViews(sibling, results, depth + 1);
+    _dfsCollectAllViews(sibling, results, depth + 1, parentViewIndex);
     sibling = sibling.sibling;
   }
 }
@@ -181,7 +190,7 @@ function _findAllViewInstancesByDOMSearch() {
     while (rootFiber.return) rootFiber = rootFiber.return;
     if (seen.has(rootFiber)) continue;
     seen.add(rootFiber);
-    _dfsCollectAllViews(rootFiber, results, 0);
+    _dfsCollectAllViews(rootFiber, results, 0, -1);
   }
 
   // Last resort: body children
@@ -193,7 +202,7 @@ function _findAllViewInstancesByDOMSearch() {
       while (r.return) r = r.return;
       if (seen.has(r)) continue;
       seen.add(r);
-      _dfsCollectAllViews(r, results, 0);
+      _dfsCollectAllViews(r, results, 0, -1);
     }
   }
 
@@ -360,4 +369,61 @@ function _findViewInstanceByDOMSearch() {
   }
 
   return null;
+}
+
+/**
+ * Build the full view-instance hierarchy tree for the current screen.
+ * Returns ALL view instances (not content-area filtered) with parent
+ * relationships so the side panel can render a component hierarchy tree.
+ */
+function _osGetBlockTree() {
+  try {
+    var all = _findAllViewInstances();
+    if (all.length === 0) {
+      return { ok: true, nodes: [] };
+    }
+
+    // Tag which nodes are in the content area
+    var contentViews = _findContentAreaViewInstances();
+
+    var nodes = [];
+    for (var i = 0; i < all.length; i++) {
+      var entry = all[i];
+      var ctrl = entry.viewInstance.controller;
+      var proto = Object.getPrototypeOf(ctrl);
+      var modulePath = _extractModulePath(proto);
+
+      // Derive display name from modulePath last segment
+      var name = "";
+      if (modulePath) {
+        var parts = modulePath.split(".");
+        name = parts[parts.length - 1];
+      }
+
+      // Fallback: use data-block attribute
+      var dataBlockAttr = "";
+      if (contentViews && contentViews.has(entry.viewInstance)) {
+        dataBlockAttr = contentViews.get(entry.viewInstance) || "";
+      }
+      if (!name && dataBlockAttr) {
+        var attrParts = dataBlockAttr.split(".");
+        name = attrParts[attrParts.length - 1];
+      }
+
+      if (!name) name = i === 0 ? "Screen" : "Unknown Block";
+
+      nodes.push({
+        viewIndex: entry.viewIndex,
+        parentViewIndex: entry.parentViewIndex,
+        modulePath: modulePath,
+        dataBlockAttr: dataBlockAttr,
+        name: name,
+        isContentArea: i === 0 || (contentViews ? contentViews.has(entry.viewInstance) : false),
+      });
+    }
+
+    return { ok: true, nodes: nodes };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
 }

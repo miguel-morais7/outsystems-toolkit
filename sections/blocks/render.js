@@ -34,7 +34,7 @@ export function render() {
       (b) =>
         b.name.toLowerCase().includes(query) ||
         b.fullName.toLowerCase().includes(query) ||
-        b.group.toLowerCase().includes(query)
+        b.module.toLowerCase().includes(query)
     );
   }
 
@@ -51,12 +51,12 @@ export function render() {
     return;
   }
 
-  // Group by group (module path)
+  // Group by module (like other sections)
   const groups = {};
   filtered.forEach((b) => {
-    const group = b.group || "Other";
-    if (!groups[group]) groups[group] = [];
-    groups[group].push(b);
+    const mod = b.module || "Other";
+    if (!groups[mod]) groups[mod] = [];
+    groups[mod].push(b);
   });
 
   let html = "";
@@ -99,6 +99,12 @@ function buildBlockRow(b) {
         <span class="var-name">${esc(b.name)}</span>
         ${isLive ? '<span class="block-live-badge">LIVE</span>' : ''}
       </div>
+      ${isLive ? `<button class="btn-icon btn-block-tree" data-view-index="${liveBlock.viewIndex}" data-block-name="${escAttr(b.name)}" title="View component hierarchy">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="4" r="2"/><circle cx="6" cy="20" r="2"/><circle cx="18" cy="20" r="2"/>
+          <path d="M12 6v4"/><path d="M12 10L6 18"/><path d="M12 10l6 8"/>
+        </svg>
+      </button>` : ''}
     </div>`;
 
   // Add details panel if expanded

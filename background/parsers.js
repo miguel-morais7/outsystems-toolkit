@@ -330,10 +330,12 @@ export async function fetchScreens(pageUrl) {
     const blockName = parts[parts.length - 1];
     // Group is the parent path (e.g. "ILSEReactive.WebBlocks")
     const group = parts.length > 1 ? parts.slice(0, -1).join(".") : parts[0];
+    const module = parts[0];
     blocks.push({
       name: blockName,
       mvcModuleName,
       controllerModuleName: controllerName,
+      module,
       group,
       fullName: mvcModuleName,
     });

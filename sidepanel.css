@@ -1268,6 +1268,141 @@ body {
   box-shadow: 0 2px 12px rgba(201, 42, 42, 0.15);
 }
 
+.btn-block-tree {
+  color: var(--text-muted);
+  transition: color var(--transition);
+  align-self: center;
+}
+
+.btn-block-tree:hover {
+  color: var(--color-red);
+}
+
+/* ------------------------------------------------------------------ */
+/*  BLOCK TREE POPUP                                                   */
+/* ------------------------------------------------------------------ */
+
+.block-tree {
+  padding: 4px 0;
+}
+
+.block-tree-node {
+  margin-left: 18px;
+  border-left: 1px solid var(--border);
+}
+
+/* Root node has no indent or connector */
+.block-tree > .block-tree-node {
+  margin-left: 0;
+  border-left: none;
+}
+
+.block-tree-node-header {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition);
+  user-select: none;
+  margin-left: -1px;
+}
+
+.block-tree-node-header:hover {
+  background: var(--bg-hover);
+}
+
+/* Target block (selected) */
+.block-tree-target > .block-tree-node-header {
+  background: linear-gradient(90deg, rgba(201, 42, 42, 0.12) 0%, rgba(201, 42, 42, 0.04) 100%);
+  box-shadow: inset 3px 0 0 var(--color-red);
+}
+
+/* Ancestor blocks on path */
+.block-tree-on-path > .block-tree-node-header {
+  background: rgba(201, 42, 42, 0.04);
+}
+
+.block-tree-chevron-wrap {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  transition: transform var(--transition);
+}
+
+.block-tree-chevron-wrap.collapsed {
+  transform: rotate(-90deg);
+}
+
+.block-tree-chevron {
+  color: var(--text-muted);
+}
+
+.block-tree-chevron-spacer {
+  width: 10px;
+  flex-shrink: 0;
+}
+
+.block-tree-icon {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.block-tree-target .block-tree-icon {
+  color: var(--color-red);
+}
+
+.block-tree-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.block-tree-target .block-tree-name {
+  color: var(--color-red-dark);
+}
+
+.block-tree-badge {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 1px 6px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  margin-left: 2px;
+}
+
+.block-tree-badge-screen {
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+.block-tree-badge-target {
+  background: linear-gradient(135deg, var(--color-red) 0%, var(--color-red-dark) 100%);
+  color: #fff;
+  box-shadow: 0 1px 4px rgba(201, 42, 42, 0.3);
+}
+
+.block-tree-badge-live {
+  background: rgba(201, 42, 42, 0.1);
+  color: var(--color-red);
+  border: 1px solid rgba(201, 42, 42, 0.2);
+}
+
+.block-tree-children {
+  overflow: hidden;
+}
+
+.block-tree-children.collapsed {
+  display: none;
+}
+
 /* ------------------------------------------------------------------ */
 /*  STATIC ENTITIES SECTION                                            */
 /* ------------------------------------------------------------------ */
