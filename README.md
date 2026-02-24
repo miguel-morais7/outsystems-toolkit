@@ -1,6 +1,6 @@
 # OutSystems Reactive Toolkit — Chrome Extension
 
-A Chrome side panel extension for inspecting and editing **OutSystems Reactive** application runtime data. It provides deep visibility into client variables, screen variables, actions, aggregates, static entities, roles, and producer references — all from a convenient side panel.
+A Chrome side panel extension for inspecting and editing **OutSystems Reactive** application runtime data. It provides deep visibility into client variables, screen variables, block components, actions, aggregates, static entities, roles, and producer references — all from a convenient side panel.
 
 ## Features
 
@@ -25,6 +25,14 @@ For the currently active screen:
 - **Data Actions** — Trigger refresh and inspect updated output parameters.
 - **Aggregates** — Trigger refresh and inspect updated output.
 - **Server Actions** — Invoke server-side actions with input parameter editing and output parameter inspection.
+
+### Blocks
+Inspect and interact with **block component instances** live on the current screen. The extension walks the React Fiber tree to discover all block view instances and exposes the same capabilities available for screens.
+
+- **Block Discovery**: Automatically finds all live block instances rendered on the current page via Fiber tree traversal.
+- **Full Inspection**: Each block expands to show its Local Variables, Screen Actions, Data Actions, Aggregates, and Server Actions — with live runtime values.
+- **Inline Editing**: Edit block variables and invoke block actions, exactly like screen-level ones.
+- **Block Tree Popup**: Visualize the full React component hierarchy (screen root → nested blocks) with the selected block highlighted and its ancestor path expanded.
 
 ### Static Entities
 - Entities grouped by module, showing attribute schemas and all records with display names.
@@ -65,6 +73,7 @@ For the currently active screen:
 5. Click a variable value to edit it inline; use the tree-view popup for complex types.
 6. Invoke screen actions, server actions, refresh data actions and aggregates directly from the panel.
 7. Click a screen name to navigate to that screen.
+8. Expand blocks in the **Blocks** section to inspect and edit block-level variables and actions. Use the tree button to visualize the component hierarchy.
 
 ## Project Structure
 
@@ -78,7 +87,7 @@ For the currently active screen:
 ├── sidepanel.css              # Styles (CSS custom properties for theming)
 ├── pageScript/                # Injected into page MAIN world (globals, not ES modules)
 │   ├── helpers.js             # Shared utilities (type detection, coercion, list/record APIs)
-│   ├── fiber.js               # React Fiber traversal (find active screen model)
+│   ├── fiber.js               # React Fiber traversal (screen model, block discovery, tree)
 │   ├── clientVars.js          # Client variable CRUD & user role checking
 │   ├── screenVars.js          # Screen variable read/write/introspect, deep-set, list ops
 │   ├── screenActions.js       # Screen action discovery and invocation
@@ -89,15 +98,24 @@ For the currently active screen:
 ├── sections/                  # Modular UI feature sections
 │   ├── appmetadata.js         # App Metadata (read-only key-value display)
 │   ├── variables.js           # Client Variables (scan, filter, inline edit)
-│   ├── screens/               # Screens (sub-module with 7 files)
+│   ├── screens/               # Screens section
 │   │   ├── index.js           # Entry point, delegated events, public API
 │   │   ├── state.js           # Shared mutable state & DOM references
 │   │   ├── render.js          # HTML rendering for screen list & details
-│   │   ├── data.js            # Screen expansion, live value fetch, enrichment
+│   │   └── data.js            # Screen expansion & enrichment orchestration
+│   ├── blocks/                # Blocks section (block component inspection)
+│   │   ├── index.js           # Entry point, delegated events, public API
+│   │   ├── state.js           # Shared mutable state & DOM references
+│   │   ├── render.js          # HTML rendering for block list & details
+│   │   └── data.js            # Block expansion & enrichment orchestration
+│   ├── shared/                # Shared modules used by both Screens and Blocks
+│   │   ├── enrichment.js      # Live value fetch & action enrichment
 │   │   ├── editing.js         # Inline variable editing handlers
 │   │   ├── actions.js         # Action invocation (screen, server, data, aggregate)
-│   │   └── builders.js        # HTML builders for variable rows & action cards
+│   │   ├── builders.js        # HTML builders for variable rows & action cards
+│   │   └── render.js          # Sub-section & detail panel builders
 │   ├── screenVarPopup.js      # Shared popup for complex type tree-view inspect/edit
+│   ├── blockTreePopup.js      # Block component hierarchy tree popup
 │   ├── staticEntities.js      # Static Entities (grouped, searchable, GUID copy)
 │   ├── roles.js               # Roles (discovery + current-user check)
 │   └── producers.js           # Producer References (health status)
@@ -111,7 +129,7 @@ For the currently active screen:
 ## How It Works
 
 1. **Service Worker** (`background.js`) receives messages from the side panel via two dispatch tables: `PAGE_ACTIONS` (execute functions in the page's MAIN world) and `SPECIAL_ACTIONS` (handle fetch + parse operations in the service worker itself).
-2. **Page Scripts** (`pageScript/*.js`) are injected into the page's MAIN world in dependency order. They leverage the OutSystems AMD `require()` loader to access runtime modules and traverse the React Fiber tree to find the active screen's model and variables.
+2. **Page Scripts** (`pageScript/*.js`) are injected into the page's MAIN world in dependency order. They leverage the OutSystems AMD `require()` loader to access runtime modules and traverse the React Fiber tree to find the active screen's model and variables. An optional `viewIndex` parameter allows targeting specific block instances instead of the screen root.
 3. **Side Panel** (`sidepanel.js`) orchestrates section modules, each with a consistent `init()`/`setData()`/`getState()`/`render()` interface. Auto-scans on panel open and re-scans on tab navigation.
 
 ### Section Module Interface
