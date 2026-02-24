@@ -328,7 +328,7 @@ export async function fetchScreens(pageUrl) {
     if (screenControllerNames.has(controllerName)) continue;
     const parts = mvcModuleName.split(".");
     const blockName = parts[parts.length - 1];
-    // Group is the parent path (e.g. "ILSEReactive.WebBlocks")
+    // Group is the parent path (e.g. "MyApp.WebBlocks")
     const group = parts.length > 1 ? parts.slice(0, -1).join(".") : parts[0];
     const module = parts[0];
     blocks.push({

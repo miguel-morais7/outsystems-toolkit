@@ -361,7 +361,7 @@ function _findAllDataBlockMappings() {
 /**
  * Extract the module path from a controller prototype by inspecting method
  * source code for registerVariableGroupType keys.
- * Returns e.g. "ILSEReactive.WebBlocks.DockActivities" or "" if unknown.
+ * Returns e.g. "MyApp.WebBlocks.SomeBlock" or "" if unknown.
  */
 function _extractModulePath(proto) {
   var methodNames = Object.getOwnPropertyNames(proto);
