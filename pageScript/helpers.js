@@ -140,7 +140,7 @@ function _introspectValue(value, key, depth, maxListItems, typeHint) {
 
   // Primitive JS types
   if (typeof value !== "object" && typeof value !== "function") {
-    return { kind: "primitive", key, value: value, type: typeHint || typeof value };
+    return { kind: "primitive", key, value: value, type: typeHint || _detectOsType(value) };
   }
 
   // Date objects (native or OS DateTime wrapper with .getTime())
@@ -324,6 +324,16 @@ function _navigateToPath(startValue, path) {
 /* ------------------------------------------------------------------ */
 
 /**
+ * Return the type-appropriate default for a primitive value.
+ * Used when appending to primitive lists to avoid copying a stale template value.
+ */
+function _primitiveDefault(sample) {
+  if (typeof sample === "boolean") return false;
+  if (typeof sample === "number") return 0;
+  return "";
+}
+
+/**
  * Create a new default item and append it to a list.
  *
  * @param {*} list - A reactive list value
@@ -343,10 +353,12 @@ function _appendToList(list) {
       var template = list.getEmptyListItem();
       if (template !== null && template !== undefined) {
         if (typeof template !== "object" && typeof template !== "function") {
-          newItem = template;
-        } else if (typeof template.clone === "function") {
-          newItem = template.clone();
+          // Primitive template — use a type-appropriate default instead of the
+          // template value itself, which may be stale (shared singleton)
+          newItem = _primitiveDefault(template);
         } else if (template.constructor && template.constructor !== Object) {
+          // Prefer constructor over clone — clone copies current state of the
+          // (possibly shared/dirty) template, while the constructor gives fresh defaults
           newItem = new template.constructor();
         } else {
           newItem = template;
@@ -361,9 +373,7 @@ function _appendToList(list) {
       var template2 = list.emptyListItem;
       if (template2 !== null && template2 !== undefined) {
         if (typeof template2 !== "object" && typeof template2 !== "function") {
-          newItem = template2;
-        } else if (typeof template2.clone === "function") {
-          newItem = template2.clone();
+          newItem = _primitiveDefault(template2);
         } else if (template2.constructor && template2.constructor !== Object) {
           newItem = new template2.constructor();
         } else {
@@ -384,14 +394,12 @@ function _appendToList(list) {
     } catch (_) { /* fall through */ }
   }
 
-  // Strategy 4: For primitive lists, infer a default from an existing item
+  // Strategy 4: For primitive lists, infer a default from an existing item's type
   if (newItem === null && listLen > 0) {
     try {
       var sample2 = _listGet(list, 0);
       if (sample2 === null || sample2 === undefined || typeof sample2 !== "object") {
-        if (typeof sample2 === "boolean") newItem = false;
-        else if (typeof sample2 === "number") newItem = 0;
-        else newItem = "";
+        newItem = _primitiveDefault(sample2);
       }
     } catch (_) { /* fall through */ }
   }

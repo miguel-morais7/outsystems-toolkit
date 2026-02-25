@@ -618,6 +618,21 @@ async function handleListAppendClick(btn) {
     // Ensure the parent list stays expanded
     expandedPaths.add(JSON.stringify(path));
 
+    // Expand the newly added record so it's visible immediately
+    let listNode = tree;
+    for (const seg of path) {
+      if (!listNode) break;
+      if (typeof seg === "string" && listNode.fields) {
+        listNode = listNode.fields.find(f => f.key === seg);
+      } else if (typeof seg === "object" && seg.index !== undefined && listNode.items) {
+        listNode = listNode.items.find(i => parseInt(i.key, 10) === seg.index);
+      }
+    }
+    if (listNode && listNode.kind === "list" && listNode.count > 0) {
+      const newItemPath = [...path, { index: listNode.count - 1 }];
+      expandedPaths.add(JSON.stringify(newItemPath));
+    }
+
     // Re-render the entire tree with the updated data, preserving expansion state
     const body = popupOverlay.querySelector(".var-popup-body");
     if (body) {

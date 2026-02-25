@@ -1836,6 +1836,10 @@ body {
   position: relative;
 }
 
+.var-tree-list-item > .var-tree-leaf {
+  padding-right: 26px;
+}
+
 .btn-list-delete {
   display: none;
   position: absolute;
