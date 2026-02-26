@@ -172,7 +172,7 @@ const PAGE_ACTIONS = {
   GET_BLOCK_TREE:            { func: () => _osGetBlockTree(),                                                       args: () => [] },
   GET_BUILTIN_FUNCTIONS:     { func: () => _osBuiltinFunctionsGet(),                                                args: () => [] },
   OVERRIDE_BUILTIN_FUNCTIONS:{ func: (o) => _osBuiltinFunctionsOverride(o),                                         args: msg => [msg.overrides] },
-  RESTORE_BUILTIN_FUNCTION:  { func: (n) => _osBuiltinFunctionRestore(n),                                           args: msg => [msg.name] },
+  RESTORE_BUILTIN_FUNCTIONS: { func: (n) => _osBuiltinFunctionRestore(n),                                           args: msg => [msg.name] },
 };
 
 /**

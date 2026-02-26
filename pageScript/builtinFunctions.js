@@ -38,9 +38,13 @@ var _builtinFuncMeta = [
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
+var _builtinBFCache = null;
+
 function _builtinGetBF() {
+  if (_builtinBFCache) return _builtinBFCache;
   var OS = require("OutSystems/ClientRuntime/Main");
-  return OS.Internal.BuiltinFunctions;
+  _builtinBFCache = OS.Internal.BuiltinFunctions;
+  return _builtinBFCache;
 }
 
 /** Cached OutSystems DateTime constructor (resolved lazily). */

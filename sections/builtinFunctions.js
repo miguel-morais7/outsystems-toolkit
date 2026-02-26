@@ -134,7 +134,7 @@ async function handleOverride(key) {
 async function handleRestore(key) {
   delete overrides[key];
   const result = await sendMessage({
-    action: "RESTORE_BUILTIN_FUNCTION",
+    action: "RESTORE_BUILTIN_FUNCTIONS",
     name: key,
   });
 
@@ -197,7 +197,7 @@ function buildFuncRow(func) {
              type="${inputType}"
              data-key="${escAttr(func.key)}"
              value="${escAttr(inputValue)}"
-             ${func.type === "time" ? 'step="1"' : ""} />
+             ${func.type === "time" || func.type === "datetime" ? 'step="1"' : ""} />
       ${btn}
     </div>
   </div>`;
