@@ -13,7 +13,7 @@ import { show, hide } from '../utils/ui.js';
 /* ================================================================== */
 let allModels = [];          // Array of { name, module, kind, attributes: [{name, type}] }
 let collapsedModules = {};   // module -> bool
-let collapsedModels = {};    // name -> bool (true = expanded; default is collapsed)
+let expandedModels = {};     // "module.name" -> bool (true = expanded; default is collapsed)
 
 /* ================================================================== */
 /*  DOM references                                                     */
@@ -23,7 +23,6 @@ const selectModule = document.getElementById("select-data-model-module");
 const selectKind   = document.getElementById("select-data-model-kind");
 const listEl       = document.getElementById("data-model-list");
 const countEl      = document.getElementById("data-model-count");
-const emptyState   = document.getElementById("empty-state");
 
 /** The root section element (exported for the orchestrator). */
 export const sectionEl = document.getElementById("data-model-section");
@@ -53,11 +52,11 @@ export function init() {
     // Data model item header collapse
     const modelHeader = e.target.closest(".data-model-header");
     if (modelHeader) {
-      const name = modelHeader.dataset.modelName;
+      const key = modelHeader.dataset.modelModule + "." + modelHeader.dataset.modelName;
       const body = modelHeader.nextElementSibling;
       const isCollapsed = modelHeader.classList.toggle("collapsed");
       body.classList.toggle("collapsed", isCollapsed);
-      collapsedModels[name] = !isCollapsed; // true = expanded
+      expandedModels[key] = !isCollapsed;
       return;
     }
   });
@@ -116,6 +115,7 @@ export function render() {
   }
 
   if (filtered.length === 0) {
+    listEl.innerHTML = "";
     hide(sectionEl);
     return;
   }
@@ -148,7 +148,6 @@ export function render() {
 
   listEl.innerHTML = html;
   show(sectionEl);
-  hide(emptyState);
 }
 
 /* ================================================================== */
@@ -158,13 +157,14 @@ export function render() {
 const TYPE_MAP = { DateTime: "Date Time", LongInteger: "Long Integer", PhoneNumber: "Phone Number" };
 
 function buildModelItem(model) {
-  const isExpanded = !!collapsedModels[model.name]; // true = expanded
+  const key = model.module + "." + model.name;
+  const isExpanded = !!expandedModels[key];
   const kindClass = model.kind === "Entity" ? "kind-entity" : "kind-structure";
 
   let html = `<div class="data-model-group">`;
 
   // Item header
-  html += `<div class="data-model-header ${isExpanded ? '' : 'collapsed'}" data-model-name="${escAttr(model.name)}">`;
+  html += `<div class="data-model-header ${isExpanded ? '' : 'collapsed'}" data-model-module="${escAttr(model.module)}" data-model-name="${escAttr(model.name)}">`;
   html += `<svg class="chevron data-model-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`;
   html += `<span class="data-model-name">${esc(model.name)}</span>`;
   html += `<span class="data-model-kind ${kindClass}">${esc(model.kind)}</span>`;
