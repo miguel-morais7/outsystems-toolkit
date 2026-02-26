@@ -11,7 +11,7 @@
  *   - _osDiscoverBlocks()
  *   - _findAllDataBlockMappings()
  *   - _getReactFiber()
- *   - _hasModelVariables()
+ *   - _isViewInstance()
  *   - _walkFiberForView()
  *   - _dfsForView()
  *   - _dfsCollectAllViews()
@@ -51,16 +51,18 @@ function _findCurrentScreenViewInstance() {
 }
 
 /**
- * Safely check whether a fiber stateNode is a View instance with
- * controller / model / variables.  The model.variables getter can throw
- * "Model does not contain variables" on some view instances, so we
- * guard with try/catch.
+ * Check whether a fiber stateNode is a View instance (has controller + model).
+ * The model.variables getter can throw "Model does not contain variables" on
+ * screens/blocks without local variables — these are still valid view instances
+ * (they can have actions, data fetches, etc.), so we return true in that case.
  */
-function _hasModelVariables(instance) {
+function _isViewInstance(instance) {
   try {
     return !!(instance && instance.controller && instance.model && instance.model.variables);
   } catch (_) {
-    return false;
+    // model.variables threw — but if we got here, instance.controller and
+    // instance.model were truthy, so this is a valid view instance.
+    return true;
   }
 }
 
@@ -101,7 +103,7 @@ function _dfsForView(fiber) {
   if (!fiber) return null;
 
   // Check if this fiber's stateNode is the View we're looking for
-  if (_hasModelVariables(fiber.stateNode)) {
+  if (_isViewInstance(fiber.stateNode)) {
     return fiber.stateNode;
   }
 
@@ -160,7 +162,7 @@ function _dfsCollectAllViews(fiber, results, depth, parentViewIndex) {
   while (current) {
     var currentParent = parentViewIndex;
 
-    if (_hasModelVariables(current.stateNode)) {
+    if (_isViewInstance(current.stateNode)) {
       var thisIndex = results.length;
       results.push({
         viewInstance: current.stateNode,
@@ -319,7 +321,7 @@ function _findContentAreaViewInstances() {
     // Walk up the fiber tree to find the nearest View with model.variables
     var current = fiber;
     while (current) {
-      if (_hasModelVariables(current.stateNode)) {
+      if (_isViewInstance(current.stateNode)) {
         views.set(current.stateNode, dataBlock || "");
         break;
       }
@@ -345,7 +347,7 @@ function _findAllDataBlockMappings() {
     if (!fiber) continue;
     var current = fiber;
     while (current) {
-      if (_hasModelVariables(current.stateNode)) {
+      if (_isViewInstance(current.stateNode)) {
         // First (nearest) data-block wins for each view instance
         if (!views.has(current.stateNode)) {
           views.set(current.stateNode, dataBlock || "");
@@ -388,7 +390,7 @@ function _extractModulePath(proto) {
 /**
  * Fallback: search the DOM for elements with React fiber properties,
  * then walk each fiber tree to find the View instance.
- * Uses _hasModelVariables() for consistent try/catch-guarded checking.
+ * Uses _isViewInstance() for consistent try/catch-guarded checking.
  */
 function _findViewInstanceByDOMSearch() {
   // Try common OutSystems root selectors
