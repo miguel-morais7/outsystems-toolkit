@@ -67,6 +67,14 @@ function parseModelJsStaticEntities(text) {
     }
   }
 
+  // 4. Rec → module ownership from define() calls
+  // Pattern: define("ModuleName.model$RecNameRec", ...)
+  const recModules = {};
+  const definePattern = /define\s*\(\s*"([\w.]+?)\.model\$(\w+Rec)"/g;
+  while ((m = definePattern.exec(text)) !== null) {
+    recModules[m[2]] = m[1];
+  }
+
   // Connect schemas to entities by naming convention (EntityName → EntityNameRec)
   for (const data of Object.values(entities)) {
     if (schemas[data.entityName]) {
@@ -74,7 +82,7 @@ function parseModelJsStaticEntities(text) {
     }
   }
 
-  return { entities, schemas };
+  return { entities, schemas, recModules };
 }
 
 /* ------------------------------------------------------------------ */
@@ -249,47 +257,49 @@ export async function fetchScreens(pageUrl) {
     }));
   }
 
-  // Enrich static entities with names and attribute schemas from model.js files
-  if (staticEntities.length > 0) {
-    // Discover ALL model.js filenames from the manifest urlVersions.
-    // Entity name→GUID mappings live in consumer modules' model.js files,
-    // not necessarily in the defining module, so we must scan all of them.
-    const modelJsNames = new Set();
-    const modelJsPattern = /\/scripts\/(.+)\.model\.js$/;
-    for (const urlPath of Object.keys(urlVersions)) {
-      const match = urlPath.match(modelJsPattern);
-      if (match) modelJsNames.add(match[1]);
-    }
-    // Also include module names from moduleinfo as a fallback
-    for (const m of Object.values(modules)) {
-      if (m.moduleName) modelJsNames.add(m.moduleName);
-    }
+  // Discover ALL model.js filenames from the manifest urlVersions.
+  // Entity name→GUID mappings live in consumer modules' model.js files,
+  // not necessarily in the defining module, so we must scan all of them.
+  const modelJsNames = new Set();
+  const modelJsPattern = /\/scripts\/(.+)\.model\.js$/;
+  for (const urlPath of Object.keys(urlVersions)) {
+    const match = urlPath.match(modelJsPattern);
+    if (match) modelJsNames.add(match[1]);
+  }
+  // Also include module names from moduleinfo as a fallback
+  for (const m of Object.values(modules)) {
+    if (m.moduleName) modelJsNames.add(m.moduleName);
+  }
 
-    // Fetch and parse model.js for each module (in parallel)
-    const enrichmentMap = {};
-    const allSchemas = {};
-    const fetches = [...modelJsNames].map(async (modName) => {
-      try {
-        const modelUrl = `${baseUrl}/scripts/${modName}.model.js?${Date.now()}`;
-        const resp = await fetch(modelUrl, { credentials: "include" });
-        if (!resp.ok) return;
-        const text = await resp.text();
-        const { entities, schemas } = parseModelJsStaticEntities(text);
-        for (const [guid, eData] of Object.entries(entities)) {
-          if (!enrichmentMap[guid]) {
-            enrichmentMap[guid] = { ...eData };
-          } else {
-            Object.assign(enrichmentMap[guid].records, eData.records);
-            if (eData.attributes && !enrichmentMap[guid].attributes) {
-              enrichmentMap[guid].attributes = eData.attributes;
-            }
+  // Fetch and parse model.js for each module (in parallel)
+  const enrichmentMap = {};
+  const allSchemas = {};
+  const allRecModules = {};
+  const fetches = [...modelJsNames].map(async (modName) => {
+    try {
+      const modelUrl = `${baseUrl}/scripts/${modName}.model.js?${Date.now()}`;
+      const resp = await fetch(modelUrl, { credentials: "include" });
+      if (!resp.ok) return;
+      const text = await resp.text();
+      const { entities, schemas, recModules } = parseModelJsStaticEntities(text);
+      for (const [guid, eData] of Object.entries(entities)) {
+        if (!enrichmentMap[guid]) {
+          enrichmentMap[guid] = { ...eData };
+        } else {
+          Object.assign(enrichmentMap[guid].records, eData.records);
+          if (eData.attributes && !enrichmentMap[guid].attributes) {
+            enrichmentMap[guid].attributes = eData.attributes;
           }
         }
-        Object.assign(allSchemas, schemas);
-      } catch (_) { /* skip failed fetches */ }
-    });
-    await Promise.all(fetches);
+      }
+      Object.assign(allSchemas, schemas);
+      Object.assign(allRecModules, recModules);
+    } catch (_) { /* skip failed fetches */ }
+  });
+  await Promise.all(fetches);
 
+  // Enrich static entities with names and attribute schemas from model.js
+  if (staticEntities.length > 0) {
     // Second pass: connect orphan schemas to entities by naming convention
     for (const data of Object.values(enrichmentMap)) {
       if (!data.attributes && allSchemas[data.entityName]) {
@@ -311,6 +321,31 @@ export async function fetchScreens(pageUrl) {
       }
     }
   }
+
+  // Build Entities & Structures list from non-static-entity Rec definitions
+  const staticEntityRecNames = new Set();
+  for (const data of Object.values(enrichmentMap)) {
+    staticEntityRecNames.add(data.entityName);
+  }
+
+  const dataModels = [];
+  for (const [recBaseName, attrs] of Object.entries(allSchemas)) {
+    if (staticEntityRecNames.has(recBaseName)) continue;
+    if (recBaseName.endsWith("DataAct") || recBaseName.endsWith("Aggr")) continue;
+    if (recBaseName === "Variables") continue;
+
+    const recFullName = recBaseName + "Rec";
+    const definingModule = allRecModules[recFullName] || "Unknown";
+    const hasId = attrs.some(a => a.name === "Id");
+
+    dataModels.push({
+      name: recBaseName,
+      module: definingModule,
+      kind: hasId ? "Entity" : "Structure",
+      attributes: attrs,
+    });
+  }
+  dataModels.sort((a, b) => a.name.localeCompare(b.name));
 
   // Discover block .mvc.js files from urlVersions
   // Blocks are any .mvc.js files that don't belong to a known screen
@@ -352,6 +387,7 @@ export async function fetchScreens(pageUrl) {
     homeScreenName,
     versionInfo,
     staticEntities,
+    dataModels,
   };
 }
 

@@ -21,12 +21,13 @@ import * as screens from './sections/screens/index.js';
 import * as blocks from './sections/blocks/index.js';
 import * as roles from './sections/roles.js';
 import * as staticEntities from './sections/staticEntities.js';
+import * as dataModels from './sections/dataModels.js';
 
 /* ================================================================== */
 /*  Section registry                                                   */
 /*  Add new sections here — showLoading / showEmptyState pick them up  */
 /* ================================================================== */
-const sections = [appmetadata, variables, screens, blocks, staticEntities, roles, producers];
+const sections = [appmetadata, variables, screens, blocks, staticEntities, dataModels, roles, producers];
 
 /* ================================================================== */
 /*  DOM references (orchestrator-level only)                           */
@@ -152,6 +153,16 @@ async function doScan() {
       hide(staticEntities.sectionEl);
     }
 
+    // Entities & Structures
+    if (screenResult?.ok && screenResult.dataModels && screenResult.dataModels.length > 0) {
+      dataModels.setData(screenResult.dataModels);
+      dataModels.populateModuleFilter();
+      dataModels.render();
+    } else {
+      dataModels.setData([]);
+      hide(dataModels.sectionEl);
+    }
+
     // Roles
     if (rolesResult && rolesResult.ok) {
       const rolesList = rolesResult.roles || [];
@@ -182,6 +193,7 @@ async function doScan() {
     const scrState = screens.getState();
     const blkState = blocks.getState();
     const seState = staticEntities.getState();
+    const dmState = dataModels.getState();
     const rolesState = roles.getState();
 
     const parts = [];
@@ -201,6 +213,10 @@ async function doScan() {
     if (seState.count > 0) {
       const seText = seState.count === 1 ? "static entity" : "static entities";
       parts.push(`${seState.count} ${seText}`);
+    }
+    if (dmState.count > 0) {
+      const dmText = dmState.count === 1 ? "entity/structure" : "entities/structures";
+      parts.push(`${dmState.count} ${dmText}`);
     }
     if (rolesState.count > 0) {
       const rolesText = rolesState.count === 1 ? "role" : "roles";

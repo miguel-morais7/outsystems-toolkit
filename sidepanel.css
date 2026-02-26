@@ -290,6 +290,9 @@ body {
 }
 
 .section-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   flex: 1;
@@ -306,6 +309,60 @@ body {
   text-align: center;
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Info hint icon with tooltip */
+.info-hint {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: help;
+  transition: color 0.2s ease;
+}
+
+.info-hint:hover {
+  color: #ffffff;
+}
+
+/* Raise the entire section header stacking context when tooltip is active */
+.section-header:has(.info-hint:hover) {
+  z-index: 10;
+}
+
+.info-hint::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: calc(100% + 8px);
+  right: -8px;
+  width: 240px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.45;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.info-hint:hover::after {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
 }
 
 /* Section body collapsing */
@@ -1503,6 +1560,99 @@ body {
 .entity-header .btn-copy-guid:hover {
   opacity: 1;
   color: var(--color-red);
+}
+
+/* ------------------------------------------------------------------ */
+/*  ENTITIES & STRUCTURES SECTION                                      */
+/* ------------------------------------------------------------------ */
+
+.data-model-group {
+  margin-bottom: 2px;
+}
+
+.data-model-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px 7px 36px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6b5b5a;
+  background: linear-gradient(90deg, rgba(201, 42, 42, 0.06) 0%, rgba(255, 255, 255, 1) 100%);
+  cursor: pointer;
+  user-select: none;
+  border-bottom: 1px solid var(--border);
+  transition: all var(--transition);
+}
+
+.data-model-header:hover {
+  background: linear-gradient(90deg, rgba(201, 42, 42, 0.10) 0%, rgba(255, 255, 255, 1) 100%);
+}
+
+.data-model-chevron {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+  color: var(--color-red);
+}
+
+.data-model-header.collapsed .data-model-chevron {
+  transform: rotate(-90deg);
+}
+
+.data-model-name {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.data-model-kind {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px 6px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+.kind-entity {
+  background: #dbeafe;
+  color: #1e40af;
+  border: 1px solid rgba(30, 64, 175, 0.2);
+}
+
+.kind-structure {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid rgba(146, 64, 14, 0.2);
+}
+
+.data-model-header .count-badge {
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(201, 42, 42, 0.12);
+  color: var(--color-red-dark);
+  border-radius: 12px;
+  padding: 2px 8px;
+  margin-left: auto;
+  border: 1px solid rgba(201, 42, 42, 0.2);
+}
+
+.data-model-body {
+  overflow: hidden;
+}
+
+.data-model-body.collapsed {
+  display: none;
+}
+
+.data-model-attr-row {
+  padding-left: 48px;
+}
+
+.data-model-attr-row .var-type {
+  font-size: 11px;
 }
 
 /* ------------------------------------------------------------------ */
