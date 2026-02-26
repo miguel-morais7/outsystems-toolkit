@@ -446,7 +446,7 @@ body {
 /* Variable row */
 .var-row {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: auto minmax(150px, 1fr);
   gap: 8px;
   align-items: start;
   padding: 10px 16px 10px 28px;
@@ -559,9 +559,10 @@ body {
 .var-value-wrap {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 4px;
   min-width: 0;
-  max-width: 220px;
+  width: 100%;
 }
 
 /* Value display (readonly appearance) */
@@ -1138,7 +1139,7 @@ body {
   align-items: center;
   gap: 4px;
   min-width: 0;
-  max-width: 180px;
+  width: 100%;
 }
 
 .screen-var-value-wrap .var-value,
@@ -1666,10 +1667,15 @@ body {
 
 .metadata-value {
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-primary);
   word-break: break-all;
   text-align: right;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 6px;
+  display: inline-block;
 }
 
 /* ------------------------------------------------------------------ */
@@ -2053,7 +2059,7 @@ body {
 /* ================================================================== */
 
 .builtin-row {
-  grid-template-columns: 1fr auto;
+  /* inherits grid-template-columns from .var-row */
 }
 
 .builtin-value-wrap {
@@ -2061,18 +2067,19 @@ body {
   align-items: center;
   gap: 4px;
   min-width: 0;
+  width: 100%;
 }
 
 .builtin-value-wrap .builtin-input {
   font-family: var(--font-mono);
   font-size: 13px;
   padding: 3px 6px;
+  width: 100%;
   background: var(--bg-secondary);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   color: var(--text-primary);
   min-width: 100px;
-  max-width: 180px;
   outline: none;
   transition: border-color var(--transition), box-shadow var(--transition);
 }

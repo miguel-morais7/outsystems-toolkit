@@ -28,7 +28,7 @@ import * as builtinFunctions from './sections/builtinFunctions.js';
 /*  Section registry                                                   */
 /*  Add new sections here — showLoading / showEmptyState pick them up  */
 /* ================================================================== */
-const sections = [appmetadata, variables, screens, blocks, staticEntities, dataModels, roles, builtinFunctions, producers];
+const sections = [appmetadata, variables, screens, blocks, builtinFunctions, staticEntities, dataModels, roles, producers];
 
 /* ================================================================== */
 /*  DOM references (orchestrator-level only)                           */
