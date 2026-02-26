@@ -22,12 +22,13 @@ import * as blocks from './sections/blocks/index.js';
 import * as roles from './sections/roles.js';
 import * as staticEntities from './sections/staticEntities.js';
 import * as dataModels from './sections/dataModels.js';
+import * as builtinFunctions from './sections/builtinFunctions.js';
 
 /* ================================================================== */
 /*  Section registry                                                   */
 /*  Add new sections here — showLoading / showEmptyState pick them up  */
 /* ================================================================== */
-const sections = [appmetadata, variables, screens, blocks, staticEntities, dataModels, roles, producers];
+const sections = [appmetadata, variables, screens, blocks, staticEntities, dataModels, roles, builtinFunctions, producers];
 
 /* ================================================================== */
 /*  DOM references (orchestrator-level only)                           */
@@ -188,6 +189,17 @@ async function doScan() {
     producers.setData(result.producers || [], result.producerModules || []);
     producers.populateModuleFilter();
     producers.render();
+
+    // Built-in Functions — re-apply stored overrides, then fetch current state
+    await builtinFunctions.reapplyOverrides();
+    const bfResult = await sendMessage({ action: "GET_BUILTIN_FUNCTIONS" }).catch(() => null);
+    if (bfResult?.ok) {
+      builtinFunctions.setData(bfResult.functions);
+      builtinFunctions.render();
+    } else {
+      builtinFunctions.setData([]);
+      hide(builtinFunctions.sectionEl);
+    }
 
     // Build status message from section states
     const varState = variables.getState();
