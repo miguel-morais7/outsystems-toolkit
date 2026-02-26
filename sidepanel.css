@@ -2047,3 +2047,80 @@ body {
   opacity: 0.5;
   cursor: wait;
 }
+
+/* ================================================================== */
+/*  Built-in Functions section                                         */
+/* ================================================================== */
+
+.builtin-row {
+  grid-template-columns: 1fr auto;
+}
+
+.builtin-value-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.builtin-value-wrap .builtin-input {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  padding: 3px 6px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  min-width: 100px;
+  max-width: 180px;
+  outline: none;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.builtin-value-wrap .builtin-input:focus {
+  border-color: var(--color-red);
+  box-shadow: 0 0 0 2px rgba(201, 42, 42, .15);
+  background: var(--bg-input);
+}
+
+.builtin-overridden {
+  background: linear-gradient(90deg, rgba(201, 42, 42, 0.06) 0%, rgba(255, 255, 255, 1) 100%);
+}
+
+.builtin-overridden::before {
+  background: linear-gradient(135deg, var(--color-red) 0%, var(--color-red-dark) 100%);
+  opacity: 1;
+}
+
+.btn-builtin-override,
+.btn-builtin-restore {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.btn-builtin-override:hover {
+  border-color: var(--color-red);
+  background: rgba(201, 42, 42, 0.08);
+  color: var(--color-red);
+}
+
+.btn-builtin-restore {
+  border-color: rgba(201, 42, 42, 0.3);
+  background: rgba(201, 42, 42, 0.06);
+  color: var(--color-red);
+}
+
+.btn-builtin-restore:hover {
+  background: rgba(201, 42, 42, 0.15);
+  border-color: var(--color-red);
+}
