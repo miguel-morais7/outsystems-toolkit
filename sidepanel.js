@@ -83,7 +83,7 @@ async function doScan() {
     }
 
     // Feed data into section modules
-    appmetadata.setData(result.appDefinition || null);
+    appmetadata.setData(result.appDefinition || null, result.platform);
     appmetadata.render();
 
     variables.setData(result.variables || [], result.modules || []);

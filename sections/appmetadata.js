@@ -14,6 +14,7 @@ import { show, hide } from '../utils/ui.js';
 /* ================================================================== */
 let metadataEntries = []; // Array of { key, label, value }
 let versionInfo = null;   // { versionToken, versionSequence }
+let platform = "unknown"; // 'reactive' | 'odc' | 'unknown'
 
 /* ================================================================== */
 /*  DOM references                                                     */
@@ -35,7 +36,8 @@ export function init() {
 }
 
 /** Replace section data after a scan. */
-export function setData(appDef) {
+export function setData(appDef, platformType) {
+  platform = platformType || "unknown";
   if (!appDef) {
     metadataEntries = [];
     versionInfo = null;
@@ -58,15 +60,24 @@ export function getState() {
 
 /** Render (or re-render) the metadata list. */
 export function render() {
-  if (metadataEntries.length === 0) {
+  // Build display entries: platform row first (if known), then metadata
+  const labels = { reactive: "Reactive", odc: "ODC" };
+  const displayEntries = [];
+
+  if (labels[platform]) {
+    displayEntries.push({ key: "platform", label: "Platform", value: labels[platform] });
+  }
+  displayEntries.push(...metadataEntries);
+
+  if (displayEntries.length === 0) {
     hide(sectionEl);
     return;
   }
 
-  metadataCount.textContent = metadataEntries.length;
+  metadataCount.textContent = displayEntries.length;
 
   let html = "";
-  for (const entry of metadataEntries) {
+  for (const entry of displayEntries) {
     html += buildMetadataRow(entry);
   }
 

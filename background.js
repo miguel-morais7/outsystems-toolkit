@@ -44,6 +44,9 @@ function extractScriptResult(results) {
 /** Tabs where page scripts have been successfully injected. */
 const injectedTabs = new Set();
 
+/** Detected platform type per tab: 'reactive' | 'odc' | 'unknown'. */
+const tabPlatform = new Map();
+
 /**
  * In-flight injection promises, keyed by tabId.
  * Prevents duplicate concurrent injections when multiple executeInPage
@@ -80,6 +83,11 @@ async function ensurePageScriptInjected(tabId) {
 }
 
 async function doInjection(tabId) {
+  // Detect platform type before injecting page scripts
+  if (!tabPlatform.has(tabId)) {
+    await detectPlatform(tabId);
+  }
+
   const results = await chrome.scripting.executeScript({
     target: { tabId },
     world: "MAIN",
@@ -106,6 +114,30 @@ async function doInjection(tabId) {
   }
 
   injectedTabs.add(tabId);
+}
+
+/**
+ * Detect whether the page is an OutSystems Reactive or ODC app.
+ * Injects a lightweight check into the page's MAIN world and caches
+ * the result in tabPlatform.
+ */
+async function detectPlatform(tabId) {
+  try {
+    const results = await chrome.scripting.executeScript({
+      target: { tabId },
+      world: "MAIN",
+      func: () => {
+        // OSManifestLoader is unique to Reactive apps
+        if (typeof OSManifestLoader !== "undefined") return "reactive";
+        // indexVersionToken meta tag is unique to ODC apps
+        if (document.querySelector('meta[name="indexVersionToken"]')) return "odc";
+        return "unknown";
+      },
+    });
+    tabPlatform.set(tabId, extractScriptResult(results) || "unknown");
+  } catch {
+    tabPlatform.set(tabId, "unknown");
+  }
 }
 
 /**
@@ -197,7 +229,18 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   const pageAction = PAGE_ACTIONS[action];
   if (pageAction) {
     executeInPage(pageAction.func, pageAction.args(message))
-      .then(sendResponse)
+      .then(async (data) => {
+        // Enrich SCAN response with detected platform type
+        if (action === "SCAN" && data && data.ok) {
+          try {
+            const tab = await getActiveTab();
+            data.platform = tabPlatform.get(tab.id) || "unknown";
+          } catch {
+            data.platform = "unknown";
+          }
+        }
+        sendResponse(data);
+      })
       .catch(err => sendResponse({ ok: false, error: err.message }));
     return true;
   }
@@ -225,10 +268,11 @@ async function handleNavigate(url) {
 /*  Re-scan on tab navigation / refresh                                */
 /* ------------------------------------------------------------------ */
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  // Clear injection cache early — scripts are lost when the page reloads.
+  // Clear injection and platform cache — scripts are lost when the page reloads.
   if (changeInfo.status === "loading") {
     injectedTabs.delete(tabId);
     pendingInjections.delete(tabId);
+    tabPlatform.delete(tabId);
   }
 
   if (changeInfo.status === "complete" && tab.active) {
@@ -242,4 +286,5 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 chrome.tabs.onRemoved.addListener((tabId) => {
   injectedTabs.delete(tabId);
   pendingInjections.delete(tabId);
+  tabPlatform.delete(tabId);
 });
