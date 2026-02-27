@@ -1296,20 +1296,6 @@ body {
   gap: 6px;
 }
 
-.block-live-badge {
-  display: inline-block;
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .05em;
-  padding: 3px 8px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, var(--color-red) 0%, var(--color-red-dark) 100%);
-  color: #fff;
-  box-shadow: 0 2px 6px rgba(201, 42, 42, 0.3);
-  animation: pulse-badge 2s ease-in-out infinite;
-}
-
 .block-live {
   background: linear-gradient(90deg, rgba(201, 42, 42, 0.08) 0%, rgba(255, 255, 255, 1) 100%);
   border-left: 3px solid var(--color-red);
@@ -2057,10 +2043,6 @@ body {
 /* ================================================================== */
 /*  Built-in Functions section                                         */
 /* ================================================================== */
-
-.builtin-row {
-  /* inherits grid-template-columns from .var-row */
-}
 
 .builtin-value-wrap {
   display: flex;

@@ -187,7 +187,7 @@ function buildFuncRow(func) {
        </button>`;
 
   return `
-  <div class="var-row builtin-row${overriddenClass}" data-key="${escAttr(func.key)}">
+  <div class="var-row${overriddenClass}" data-key="${escAttr(func.key)}">
     <div class="var-info">
       <span class="var-name">${esc(func.displayName)}()</span>
       <span class="var-type">${esc(func.type)}</span>

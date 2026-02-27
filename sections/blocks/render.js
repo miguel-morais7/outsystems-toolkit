@@ -83,7 +83,6 @@ function buildBlockRow(b) {
       <div class="var-info">
         <svg class="screen-expand-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
         <span class="var-name">${esc(b.name)}</span>
-        ${isLive ? '<span class="block-live-badge">LIVE</span>' : ''}
       </div>
       ${isLive ? `<button class="btn-icon btn-block-tree" data-view-index="${liveBlock.viewIndex}" data-block-name="${escAttr(b.name)}" title="View component hierarchy">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
