@@ -12,6 +12,7 @@
  *   - _findAllDataBlockMappings()
  *   - _getReactFiber()
  *   - _isViewInstance()
+ *   - _getViewFromFiber()
  *   - _walkFiberForView()
  *   - _dfsForView()
  *   - _dfsCollectAllViews()
@@ -67,6 +68,42 @@ function _isViewInstance(instance) {
 }
 
 /**
+ * Extract a view wrapper from a fiber node, supporting both Reactive and ODC.
+ *
+ * Reactive: class component — controller/model live on fiber.stateNode
+ * ODC: function component (InnerScreen/InnerBlock) — controller/model live
+ *      on fiber.pendingProps
+ *
+ * Returns the stateNode (Reactive) or a cached wrapper object (ODC) with
+ * { controller, model } properties, or null if this fiber is not a view.
+ * The wrapper is cached on the fiber so repeated calls return the same
+ * object reference (required for Map key identity).
+ */
+function _getViewFromFiber(fiber) {
+  if (!fiber) return null;
+
+  // Reactive: class component with controller/model on stateNode
+  var inst = fiber.stateNode;
+  if (inst && inst.controller && inst.model) {
+    try { void inst.model.variables; } catch (_) { /* still valid */ }
+    return inst;
+  }
+
+  // ODC: function component with controller/model on pendingProps
+  var props = fiber.pendingProps;
+  if (props && props.controller && props.model) {
+    try { void props.model.variables; } catch (_) { /* still valid */ }
+    // Return a stable wrapper — cache on the fiber
+    if (!fiber.__osViewWrapper) {
+      fiber.__osViewWrapper = { controller: props.controller, model: props.model };
+    }
+    return fiber.__osViewWrapper;
+  }
+
+  return null;
+}
+
+/**
  * Get the React fiber node from a DOM element.
  */
 function _getReactFiber(element) {
@@ -102,10 +139,9 @@ function _walkFiberForView(startFiber) {
 function _dfsForView(fiber) {
   if (!fiber) return null;
 
-  // Check if this fiber's stateNode is the View we're looking for
-  if (_isViewInstance(fiber.stateNode)) {
-    return fiber.stateNode;
-  }
+  // Check if this fiber is a View (Reactive stateNode or ODC pendingProps)
+  var view = _getViewFromFiber(fiber);
+  if (view) return view;
 
   // Check child
   let result = _dfsForView(fiber.child);
@@ -144,7 +180,8 @@ function _findAllViewInstances() {
   while (rootFiber.return) rootFiber = rootFiber.return;
 
   var results = [];
-  _dfsCollectAllViews(rootFiber, results, 0, -1);
+  var seenControllers = new Set();
+  _dfsCollectAllViews(rootFiber, results, 0, -1, seenControllers);
   return results;
 }
 
@@ -156,16 +193,23 @@ function _findAllViewInstances() {
  * next sibling at the same level.  We recurse on .child (depth + 1) and
  * iterate over .sibling (same depth, same parent) to avoid stack overflow
  * on wide sibling chains.
+ *
+ * In ODC apps, the same controller/model pair is passed through multiple
+ * wrapper components (BaseWebScreen → anon → InnerScreen → named).
+ * seenControllers deduplicates by controller identity so each unique
+ * controller is collected only once.
  */
-function _dfsCollectAllViews(fiber, results, depth, parentViewIndex) {
+function _dfsCollectAllViews(fiber, results, depth, parentViewIndex, seenControllers) {
   var current = fiber;
   while (current) {
     var currentParent = parentViewIndex;
 
-    if (_isViewInstance(current.stateNode)) {
+    var view = _getViewFromFiber(current);
+    if (view && !seenControllers.has(view.controller)) {
+      seenControllers.add(view.controller);
       var thisIndex = results.length;
       results.push({
-        viewInstance: current.stateNode,
+        viewInstance: view,
         viewIndex: thisIndex,
         depth: depth,
         parentViewIndex: parentViewIndex,
@@ -174,7 +218,7 @@ function _dfsCollectAllViews(fiber, results, depth, parentViewIndex) {
     }
 
     // Children inherit current viewInstance as parent (one level deeper)
-    _dfsCollectAllViews(current.child, results, depth + 1, currentParent);
+    _dfsCollectAllViews(current.child, results, depth + 1, currentParent, seenControllers);
     // Iterate siblings at the same depth (share the original parentViewIndex)
     current = current.sibling;
   }
@@ -186,6 +230,7 @@ function _dfsCollectAllViews(fiber, results, depth, parentViewIndex) {
 function _findAllViewInstancesByDOMSearch() {
   var candidates = document.querySelectorAll("div[data-block], div[class*='screen'], #renderContainerId, body > div");
   var seen = new Set();
+  var seenControllers = new Set();
   var results = [];
 
   for (var i = 0; i < candidates.length; i++) {
@@ -195,7 +240,7 @@ function _findAllViewInstancesByDOMSearch() {
     while (rootFiber.return) rootFiber = rootFiber.return;
     if (seen.has(rootFiber)) continue;
     seen.add(rootFiber);
-    _dfsCollectAllViews(rootFiber, results, 0, -1);
+    _dfsCollectAllViews(rootFiber, results, 0, -1, seenControllers);
   }
 
   // Last resort: body children
@@ -207,7 +252,7 @@ function _findAllViewInstancesByDOMSearch() {
       while (r.return) r = r.return;
       if (seen.has(r)) continue;
       seen.add(r);
-      _dfsCollectAllViews(r, results, 0, -1);
+      _dfsCollectAllViews(r, results, 0, -1, seenControllers);
     }
   }
 
@@ -302,15 +347,28 @@ function _osDiscoverBlocks() {
 
 /**
  * Find all view instances whose DOM block element ([data-block]) is inside
- * the screen's <main> content area.  Returns a Map of viewInstance →
- * data-block attribute value, or null when the content area cannot be
- * located (caller should fall back to showing all blocks).
+ * the screen's <main> content area or inside an open popup dialog.
+ * Returns a Map of viewInstance → data-block attribute value, or null when
+ * neither the content area nor any popup dialogs can be located (caller
+ * should fall back to showing all blocks).
  */
 function _findContentAreaViewInstances() {
   var contentArea = document.querySelector("main") || document.querySelector("[role='main']");
-  if (!contentArea) return null;
+  var popupDialogs = document.querySelectorAll(".popup-dialog");
 
-  var blockEls = contentArea.querySelectorAll("[data-block]");
+  if (!contentArea && popupDialogs.length === 0) return null;
+
+  // Collect [data-block] elements from content area and open popups
+  var blockEls = [];
+  if (contentArea) {
+    var contentBlocks = contentArea.querySelectorAll("[data-block]");
+    for (var c = 0; c < contentBlocks.length; c++) blockEls.push(contentBlocks[c]);
+  }
+  for (var p = 0; p < popupDialogs.length; p++) {
+    var popupBlocks = popupDialogs[p].querySelectorAll("[data-block]");
+    for (var pb = 0; pb < popupBlocks.length; pb++) blockEls.push(popupBlocks[pb]);
+  }
+
   if (blockEls.length === 0) return new Map();
 
   var views = new Map();
@@ -321,8 +379,9 @@ function _findContentAreaViewInstances() {
     // Walk up the fiber tree to find the nearest View with model.variables
     var current = fiber;
     while (current) {
-      if (_isViewInstance(current.stateNode)) {
-        views.set(current.stateNode, dataBlock || "");
+      var view = _getViewFromFiber(current);
+      if (view) {
+        views.set(view, dataBlock || "");
         break;
       }
       current = current.return;
@@ -347,10 +406,11 @@ function _findAllDataBlockMappings() {
     if (!fiber) continue;
     var current = fiber;
     while (current) {
-      if (_isViewInstance(current.stateNode)) {
+      var view = _getViewFromFiber(current);
+      if (view) {
         // First (nearest) data-block wins for each view instance
-        if (!views.has(current.stateNode)) {
-          views.set(current.stateNode, dataBlock || "");
+        if (!views.has(view)) {
+          views.set(view, dataBlock || "");
         }
         break;
       }

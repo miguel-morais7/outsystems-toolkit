@@ -80,30 +80,43 @@ function _getRecordFieldTypes(recordInstance) {
   var typeMap = {};
   try {
     var ctor = recordInstance && recordInstance.constructor;
-    if (!ctor || typeof ctor.attributesToDeclare !== "function") return typeMap;
+    if (!ctor) return typeMap;
 
-    var captured = [];
-    var mockThis = {
-      attr: function () {
-        captured.push(Array.from(arguments));
-        return null;
+    // Reactive pattern: attributesToDeclare()
+    if (typeof ctor.attributesToDeclare === "function") {
+      var captured = [];
+      var mockThis = {
+        attr: function () {
+          captured.push(Array.from(arguments));
+          return null;
+        }
+      };
+
+      try {
+        ctor.attributesToDeclare.call(mockThis);
+      } catch (_) {
+        // Expected: _super.attributesToDeclare.call(this) fails in mock context
+        // but we've already captured the current record's attrs
       }
-    };
 
-    try {
-      ctor.attributesToDeclare.call(mockThis);
-    } catch (_) {
-      // Expected: _super.attributesToDeclare.call(this) fails in mock context
-      // but we've already captured the current record's attrs
+      for (var i = 0; i < captured.length; i++) {
+        var args = captured[i];
+        var internalName = args[1];
+        var typeEnum = args[5];
+        var typeName = _DATA_TYPE_NAMES[typeEnum];
+        if (internalName && typeName !== undefined) {
+          typeMap[internalName] = typeName;
+        }
+      }
     }
-
-    for (var i = 0; i < captured.length; i++) {
-      var args = captured[i];
-      var internalName = args[1];
-      var typeEnum = args[5];
-      var typeName = _DATA_TYPE_NAMES[typeEnum];
-      if (internalName && typeName !== undefined) {
-        typeMap[internalName] = typeName;
+    // ODC pattern: Attributes static array
+    else if (Array.isArray(ctor.Attributes)) {
+      for (var j = 0; j < ctor.Attributes.length; j++) {
+        var attr = ctor.Attributes[j];
+        var attrTypeName = _DATA_TYPE_NAMES[attr.dataType];
+        if (attr.attrName && attrTypeName !== undefined) {
+          typeMap[attr.attrName] = attrTypeName;
+        }
       }
     }
   } catch (_) {}

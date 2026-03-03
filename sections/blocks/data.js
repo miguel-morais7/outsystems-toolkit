@@ -3,6 +3,9 @@
  *
  * Handles expanding/collapsing blocks. Delegates live value fetching
  * and enrichment to shared modules.
+ *
+ * For ODC (runtime-only), skips FETCH_BLOCK_DETAILS and discovers
+ * variables/actions entirely from the live controller.
  */
 
 import { sendMessage } from '../../utils/helpers.js';
@@ -33,44 +36,58 @@ export async function toggleBlockExpand(blockId, controllerModuleName) {
   render();
 
   try {
-    const response = await sendMessage({
-      action: "FETCH_BLOCK_DETAILS",
-      baseUrl: state.screenBaseUrl,
-      moduleName: state.moduleName,
-      controllerModuleName: controllerModuleName,
-    });
+    let details;
 
-    if (response.ok) {
-      const details = {
-        inputParameters: response.inputParameters || [],
-        localVariables: response.localVariables || [],
-        aggregates: response.aggregates || [],
-        dataActions: response.dataActions || [],
-        serverActions: response.serverActions || [],
-        screenActions: response.screenActions || [],
+    if (state.platform === "odc" && isLive) {
+      // ODC: runtime-only discovery — no static mvc.js to parse
+      details = {
+        inputParameters: [],
+        localVariables: [],
+        aggregates: [],
+        dataActions: [],
+        serverActions: [],
+        screenActions: [],
       };
-
-      // If this block is live, fetch runtime values and enrich with viewIndex
-      if (isLive) {
-        const viewIndex = liveBlock.viewIndex;
-        await Promise.all([
-          fetchLiveValues(details, viewIndex),
-          enrichScreenActions(details, viewIndex),
-          enrichDataActions(details, viewIndex),
-          enrichAggregates(details, viewIndex),
-          enrichServerActions(details, viewIndex),
-        ]);
-      }
-
-      // Store details on the block object
-      const block = state.allBlocks.find(b => b.fullName === blockId);
-      if (block) {
-        block.details = details;
-      }
+      const viewIndex = liveBlock.viewIndex;
+      await Promise.all([
+        fetchLiveValues(details, viewIndex),
+        enrichScreenActions(details, viewIndex),
+        enrichDataActions(details, viewIndex),
+        enrichAggregates(details, viewIndex),
+        enrichServerActions(details, viewIndex),
+      ]);
     } else {
-      const block = state.allBlocks.find(b => b.fullName === blockId);
-      if (block) {
-        block.details = {
+      // Reactive: static parse first, then enrich with runtime
+      const response = await sendMessage({
+        action: "FETCH_BLOCK_DETAILS",
+        baseUrl: state.screenBaseUrl,
+        moduleName: state.moduleName,
+        controllerModuleName: controllerModuleName,
+      });
+
+      if (response.ok) {
+        details = {
+          inputParameters: response.inputParameters || [],
+          localVariables: response.localVariables || [],
+          aggregates: response.aggregates || [],
+          dataActions: response.dataActions || [],
+          serverActions: response.serverActions || [],
+          screenActions: response.screenActions || [],
+        };
+
+        // If this block is live, fetch runtime values and enrich with viewIndex
+        if (isLive) {
+          const viewIndex = liveBlock.viewIndex;
+          await Promise.all([
+            fetchLiveValues(details, viewIndex),
+            enrichScreenActions(details, viewIndex),
+            enrichDataActions(details, viewIndex),
+            enrichAggregates(details, viewIndex),
+            enrichServerActions(details, viewIndex),
+          ]);
+        }
+      } else {
+        details = {
           inputParameters: [],
           localVariables: [],
           aggregates: [],
@@ -80,6 +97,11 @@ export async function toggleBlockExpand(blockId, controllerModuleName) {
           error: response.error,
         };
       }
+    }
+
+    // Store details on the block object
+    if (block) {
+      block.details = details;
     }
   } catch (e) {
     const block = state.allBlocks.find(b => b.fullName === blockId);

@@ -30,6 +30,28 @@ function _osScreenVarsGet(varDefs, viewIndex) {
       return { ok: false, error: "Could not find the view instance's model." };
     }
 
+    // ODC auto-discovery: when no static defs provided, discover from
+    // VariablesRecord.Attributes (available on ODC model constructors)
+    if ((!varDefs || varDefs.length === 0) && model.constructor) {
+      try {
+        var varRecordCtor = model.constructor.getVariablesRecordConstructor();
+        if (varRecordCtor && Array.isArray(varRecordCtor.Attributes)) {
+          varDefs = varRecordCtor.Attributes.map(function(attr) {
+            return {
+              name: attr.name || attr.attrName,
+              internalName: attr.attrName,
+              type: _DATA_TYPE_NAMES[attr.dataType] || "Text",
+              isInput: false,
+            };
+          });
+        }
+      } catch (_) {}
+    }
+
+    if (!varDefs || varDefs.length === 0) {
+      return { ok: true, variables: [] };
+    }
+
     const READ_ONLY_TYPES = ["RecordList", "Record", "Object", "BinaryData"];
     const variables = [];
 
@@ -87,15 +109,7 @@ function _osScreenVarsSet(internalName, rawValue, dataType, viewIndex) {
 
     model.variables[internalName] = coerced.value;
 
-    try {
-      if (typeof viewInstance.forceUpdate === "function") {
-        viewInstance.forceUpdate();
-      } else if (typeof viewInstance.setState === "function") {
-        viewInstance.setState({});
-      }
-    } catch (renderErr) {
-      // Silently continue — value is set even if re-render fails
-    }
+    _flushAndRerender(model, viewInstance);
 
     const newValue = _safeSerialize(model.variables[internalName]);
     return { ok: true, newValue: newValue };

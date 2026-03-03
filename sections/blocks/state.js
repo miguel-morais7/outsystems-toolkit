@@ -6,10 +6,11 @@
 
 /** Mutable state — all sub-modules read/write this directly. */
 export const state = {
-  allBlocks: [],          // from fetchScreens().blocks (static parse)
+  allBlocks: [],          // from fetchScreens().blocks (static parse) or runtime (ODC)
   liveBlocks: [],         // from DISCOVER_BLOCKS (runtime, with viewIndex)
   screenBaseUrl: "",
   moduleName: "",
+  platform: "unknown",    // 'reactive' | 'odc' | 'unknown'
   expandedBlocks: {},     // blockId -> true/false
   loadingBlocks: {},      // blockId -> true (while fetching)
   expandedActions: {},    // methodName -> true/false
@@ -29,11 +30,12 @@ export const blockCount = document.getElementById("block-count");
 export const sectionEl = document.getElementById("block-section");
 
 /** Replace section data after a scan. */
-export function setData(blocks, baseUrl, modName, liveBlocks) {
+export function setData(blocks, baseUrl, modName, liveBlocks, platform) {
   state.allBlocks = blocks;
   state.screenBaseUrl = baseUrl || "";
   state.moduleName = modName || "";
   state.liveBlocks = liveBlocks || [];
+  state.platform = platform || "unknown";
   state.expandedBlocks = {};
   state.loadingBlocks = {};
   state.expandedActions = {};
