@@ -356,25 +356,8 @@ function _osOdcClientVarsScan() {
         return;
       }
 
-      // 2. Fetch all chunk texts in parallel, find ones with "ClientVariables"
-      var texts = await Promise.all(urls.map(function (url) {
-        return fetch(url).then(function (r) { return r.text(); }).catch(function () { return ""; });
-      }));
-
-      var matchingUrls = [];
-      for (var j = 0; j < texts.length; j++) {
-        if (texts[j].indexOf("ClientVariables") !== -1) {
-          matchingUrls.push(urls[j]);
-        }
-      }
-
-      if (matchingUrls.length === 0) {
-        resolve({ ok: true, variables: [], modules: [] });
-        return;
-      }
-
-      // 3. Dynamic-import matching chunks
-      var modules = await Promise.all(matchingUrls.map(function (url) {
+      // 2. Import all chunks in parallel, filter for ClientVariables exports
+      var modules = await Promise.all(urls.map(function (url) {
         return import(url).catch(function () { return null; });
       }));
 
