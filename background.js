@@ -177,9 +177,9 @@ async function executeInPage(func, args = []) {
  *   - args: extracts arguments from the incoming message
  */
 const PAGE_ACTIONS = {
-  SCAN:                     { func: () => _osClientVarsScan(),                                                     args: () => [] },
-  SET:                      { func: (m, n, v, t) => _osClientVarsSet(m, n, v, t),                                  args: msg => [msg.module, msg.name, msg.value, msg.type] },
-  GET:                      { func: (m, n) => _osClientVarsGet(m, n),                                              args: msg => [msg.module, msg.name] },
+  SCAN:                     { func: (p) => p === "odc" ? _osOdcClientVarsScan() : _osClientVarsScan(),              args: msg => [msg._platform] },
+  SET:                      { func: (p, m, n, v, t) => p === "odc" ? _osOdcClientVarsSet(m, n, v, t) : _osClientVarsSet(m, n, v, t), args: msg => [msg._platform, msg.module, msg.name, msg.value, msg.type] },
+  GET:                      { func: (p, m, n) => p === "odc" ? _osOdcClientVarsGet(m, n) : _osClientVarsGet(m, n), args: msg => [msg._platform, msg.module, msg.name] },
   GET_SCREEN_VARS:          { func: (defs, vi) => _osScreenVarsGet(defs, vi),                                      args: msg => [msg.varDefs, msg.viewIndex] },
   SET_SCREEN_VAR:           { func: (n, v, t, vi) => _osScreenVarsSet(n, v, t, vi),                                args: msg => [msg.internalName, msg.value, msg.dataType, msg.viewIndex] },
   INTROSPECT_SCREEN_VAR:    { func: (n, m, vi) => _osScreenVarIntrospect(n, m, vi),                                args: msg => [msg.internalName, msg.maxListItems || 50, msg.viewIndex] },
@@ -228,7 +228,12 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   // Page-execution actions (inject + run in MAIN world)
   const pageAction = PAGE_ACTIONS[action];
   if (pageAction) {
-    executeInPage(pageAction.func, pageAction.args(message))
+    // For platform-aware actions, resolve platform before building args
+    const prepare = (action === "SCAN" || action === "SET" || action === "GET")
+      ? getActiveTab().then(tab => { message._platform = tabPlatform.get(tab.id) || "unknown"; }).catch(() => { message._platform = "unknown"; })
+      : Promise.resolve();
+
+    prepare.then(() => executeInPage(pageAction.func, pageAction.args(message)))
       .then(async (data) => {
         // Enrich SCAN response with detected platform type
         if (action === "SCAN" && data && data.ok) {

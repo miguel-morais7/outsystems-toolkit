@@ -4,9 +4,12 @@
  * Depends on: helpers.js (_safeSerialize, _detectOsType, _coerceValue)
  *
  * Provides:
- *   - _osClientVarsScan()
- *   - _osClientVarsSet()
- *   - _osClientVarsGet()
+ *   - _osClientVarsScan()       (Reactive)
+ *   - _osClientVarsSet()        (Reactive)
+ *   - _osClientVarsGet()        (Reactive)
+ *   - _osOdcClientVarsScan()    (ODC)
+ *   - _osOdcClientVarsSet()     (ODC)
+ *   - _osOdcClientVarsGet()     (ODC)
  *   - _osProducersScan()
  *   - _osAppDefinitionScan()
  */
@@ -315,6 +318,253 @@ function _osProducersScan() {
         });
     });
   });
+}
+
+/* ================================================================== */
+/*  ODC — Client variable discovery and CRUD                           */
+/* ================================================================== */
+
+/** Map PascalCase type names from ODC getter source to display names. */
+var _ODC_TYPE_MAP = {
+  DateTime: "Date Time",
+  LongInteger: "Long Integer",
+  PhoneNumber: "Phone Number",
+};
+
+/**
+ * Scan ODC client variables by finding _oschunk-*.js scripts,
+ * dynamic-importing those containing "ClientVariables", and
+ * enumerating getter/setter methods on each instance.
+ */
+function _osOdcClientVarsScan() {
+  return new Promise(async (resolve) => {
+    try {
+      // 1. Collect unique _oschunk-*.js URLs from performance entries
+      var urls = [];
+      var seen = {};
+      var entries = performance.getEntriesByType("resource");
+      for (var i = 0; i < entries.length; i++) {
+        var e = entries[i];
+        if (e.initiatorType === "script" && /_oschunk-[^.]+\.js/.test(e.name) && !seen[e.name]) {
+          seen[e.name] = true;
+          urls.push(e.name);
+        }
+      }
+
+      if (urls.length === 0) {
+        resolve({ ok: true, variables: [], modules: [] });
+        return;
+      }
+
+      // 2. Fetch all chunk texts in parallel, find ones with "ClientVariables"
+      var texts = await Promise.all(urls.map(function (url) {
+        return fetch(url).then(function (r) { return r.text(); }).catch(function () { return ""; });
+      }));
+
+      var matchingUrls = [];
+      for (var j = 0; j < texts.length; j++) {
+        if (texts[j].indexOf("ClientVariables") !== -1) {
+          matchingUrls.push(urls[j]);
+        }
+      }
+
+      if (matchingUrls.length === 0) {
+        resolve({ ok: true, variables: [], modules: [] });
+        return;
+      }
+
+      // 3. Dynamic-import matching chunks
+      var modules = await Promise.all(matchingUrls.map(function (url) {
+        return import(url).catch(function () { return null; });
+      }));
+
+      var allVars = [];
+      var moduleSet = {};
+
+      for (var m = 0; m < modules.length; m++) {
+        var mod = modules[m];
+        if (!mod) continue;
+
+        // 4. Find exports where constructor.name === "ClientVariables"
+        var exportKeys = Object.keys(mod);
+        for (var ek = 0; ek < exportKeys.length; ek++) {
+          var val = mod[exportKeys[ek]];
+          if (!val || typeof val !== "object") continue;
+          if (!val.constructor || val.constructor.name !== "ClientVariables") continue;
+
+          // 5. Enumerate getter methods on the prototype
+          var proto = Object.getPrototypeOf(val);
+          var methods = Object.getOwnPropertyNames(proto);
+          for (var mi = 0; mi < methods.length; mi++) {
+            var methodName = methods[mi];
+            if (methodName === "constructor" || !methodName.startsWith("get")) continue;
+            if (typeof proto[methodName] !== "function") continue;
+
+            var varName = methodName.substring(3);
+            var hasSetter = typeof proto["set" + varName] === "function";
+
+            // Parse getter source for metadata
+            var moduleName = "ClientVariables";
+            var typeName = "Text";
+            try {
+              var src = proto[methodName].toString();
+              var match = src.match(/getVariable\("([^"]+)","([^"]+)",\w+\.DataTypes\.(\w+)\)/);
+              if (match) {
+                varName = match[1];
+                moduleName = match[2];
+                typeName = _ODC_TYPE_MAP[match[3]] || match[3];
+              }
+            } catch (pe) { /* source parse failed */ }
+
+            // Read current value
+            var value = null;
+            try {
+              value = val[methodName]();
+
+              // Cache wrapper constructors for types that need them
+              if ((typeName === "Date Time" || typeName === "Date" || typeName === "Time") && value && typeof value === "object") {
+                if (!window.__osODC_Ctors) window.__osODC_Ctors = {};
+                window.__osODC_Ctors.DateTime = value.constructor;
+              }
+              if ((typeName === "Decimal" || typeName === "Currency") && value && typeof value === "object") {
+                if (!window.__osODC_Ctors) window.__osODC_Ctors = {};
+                window.__osODC_Ctors.Decimal = value.constructor;
+              }
+              if (typeName === "Long Integer" && value && typeof value === "object") {
+                if (!window.__osODC_Ctors) window.__osODC_Ctors = {};
+                window.__osODC_Ctors.LongInteger = value.constructor;
+              }
+
+              value = _safeSerialize(value);
+            } catch (ve) { value = null; }
+
+            // Cache the instance for later set/get calls
+            window["__osODC_CV_" + moduleName] = val;
+            moduleSet[moduleName] = true;
+
+            allVars.push({
+              module: moduleName,
+              name: varName,
+              value: value,
+              type: typeName,
+              readOnly: !hasSetter,
+            });
+          }
+        }
+      }
+
+      var moduleList = Object.keys(moduleSet).sort();
+      allVars.sort(function (a, b) {
+        return a.module === b.module
+          ? a.name.localeCompare(b.name)
+          : a.module.localeCompare(b.module);
+      });
+
+      resolve({ ok: true, variables: allVars, modules: moduleList });
+    } catch (e) {
+      resolve({ ok: false, error: e.message });
+    }
+  });
+}
+
+/**
+ * Set an ODC client variable value.
+ */
+function _osOdcClientVarsSet(moduleName, varName, rawValue, varType) {
+  try {
+    var inst = window["__osODC_CV_" + moduleName];
+    if (!inst) return { ok: false, error: "Module not loaded: " + moduleName };
+
+    var setterName = "set" + varName;
+    if (typeof inst[setterName] !== "function")
+      return { ok: false, error: "Setter not found: " + setterName };
+
+    var coerced;
+    var ctors = window.__osODC_Ctors || {};
+
+    switch (varType) {
+      case "Boolean":
+        coerced = rawValue === "true" || rawValue === true || rawValue === "1";
+        break;
+      case "Integer":
+        coerced = parseInt(rawValue, 10);
+        if (isNaN(coerced)) return { ok: false, error: "Invalid integer: " + rawValue };
+        break;
+      case "Decimal":
+      case "Currency":
+        if (ctors.Decimal) {
+          coerced = new ctors.Decimal(parseFloat(rawValue));
+        } else {
+          coerced = parseFloat(rawValue);
+        }
+        if (isNaN(typeof coerced === "object" ? parseFloat(rawValue) : coerced))
+          return { ok: false, error: "Invalid number: " + rawValue };
+        break;
+      case "Long Integer":
+        if (ctors.LongInteger) {
+          coerced = new ctors.LongInteger(parseInt(rawValue, 10));
+        } else {
+          coerced = parseInt(rawValue, 10);
+        }
+        if (isNaN(parseInt(rawValue, 10)))
+          return { ok: false, error: "Invalid integer: " + rawValue };
+        break;
+      case "Date": {
+        var dm = String(rawValue).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (!dm) return { ok: false, error: "Invalid date: " + rawValue };
+        var dd = new Date(+dm[1], +dm[2] - 1, +dm[3]);
+        coerced = ctors.DateTime ? new ctors.DateTime(dd) : dd;
+        break;
+      }
+      case "Time": {
+        var tm = String(rawValue).match(/^(\d{2}):(\d{2})(?::(\d{2}))?$/);
+        if (!tm) return { ok: false, error: "Invalid time: " + rawValue };
+        var td = new Date(1900, 0, 1, +tm[1], +tm[2], tm[3] ? +tm[3] : 0);
+        coerced = ctors.DateTime ? new ctors.DateTime(td) : td;
+        break;
+      }
+      case "Date Time": {
+        var dtm = String(rawValue).match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/);
+        if (!dtm) return { ok: false, error: "Invalid date/time: " + rawValue };
+        var dtd = new Date(+dtm[1], +dtm[2] - 1, +dtm[3], +dtm[4], +dtm[5], dtm[6] ? +dtm[6] : 0);
+        coerced = ctors.DateTime ? new ctors.DateTime(dtd) : dtd;
+        break;
+      }
+      default:
+        coerced = String(rawValue);
+    }
+
+    inst[setterName](coerced);
+
+    // Read back
+    var getterName = "get" + varName;
+    var newValue = null;
+    if (typeof inst[getterName] === "function") {
+      newValue = _safeSerialize(inst[getterName]());
+    }
+    return { ok: true, newValue: newValue };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+/**
+ * Get a single ODC client variable's current value.
+ */
+function _osOdcClientVarsGet(moduleName, varName) {
+  try {
+    var inst = window["__osODC_CV_" + moduleName];
+    if (!inst) return { ok: false, error: "Module not loaded: " + moduleName };
+
+    var getterName = "get" + varName;
+    if (typeof inst[getterName] !== "function")
+      return { ok: false, error: "Getter not found: " + getterName };
+
+    var value = inst[getterName]();
+    return { ok: true, value: _safeSerialize(value), type: _detectOsType(value) };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
 }
 
 /* ------------------------------------------------------------------ */

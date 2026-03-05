@@ -227,13 +227,15 @@ async function doScanReactive(result) {
 
 /**
  * ODC scan flow: no static parsing available, runtime-only discovery.
- * Hides sections that depend on Reactive-only APIs (client variables,
- * built-in functions, static entities, data models, roles, producers).
+ * Client variables are discovered via _osOdcClientVarsScan. Hides sections
+ * that depend on Reactive-only APIs (built-in functions, static entities,
+ * data models, roles, producers).
  */
 async function doScanODC(result) {
-  // Hide Reactive-only sections
-  variables.setData([], []);
-  hide(variables.sectionEl);
+  // Client variables — now supported on ODC via _osOdcClientVarsScan
+  variables.setData(result.variables || [], result.modules || []);
+  variables.populateModuleFilter();
+  variables.render();
   staticEntities.setData([]);
   hide(staticEntities.sectionEl);
   dataModels.setData([]);
@@ -298,13 +300,11 @@ function buildStatusMessage(isODC) {
   const blkState = blocks.getState();
   const parts = [];
 
-  if (!isODC) {
-    const varState = variables.getState();
-    if (varState.count > 0) {
-      const varText = varState.count === 1 ? "client variable" : "client variables";
-      const modText = varState.moduleCount === 1 ? "module" : "modules";
-      parts.push(`${varState.count} ${varText} in ${varState.moduleCount} ${modText}`);
-    }
+  const varState = variables.getState();
+  if (varState.count > 0) {
+    const varText = varState.count === 1 ? "client variable" : "client variables";
+    const modText = varState.moduleCount === 1 ? "module" : "modules";
+    parts.push(`${varState.count} ${varText} in ${varState.moduleCount} ${modText}`);
   }
   if (scrState.count > 0) {
     const scrText = scrState.count === 1 ? "screen" : "screens";
