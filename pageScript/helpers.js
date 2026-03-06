@@ -521,10 +521,16 @@ function _detectOsType(value) {
 /* ------------------------------------------------------------------ */
 
 /**
+ * Cache of ODC wrapper constructors discovered from runtime values.
+ * Keyed by varType string (e.g. "Long Integer", "Decimal", "Date").
+ */
+var _wrapperCtorCache = {};
+
+/**
  * Coerce a raw string value (from the UI) into the appropriate JS type
  * before calling the OutSystems setter.
  */
-function _coerceValue(raw, varType) {
+function _coerceValue(raw, varType, currentValue) {
   switch (varType) {
     case "Boolean":
       if (typeof raw === "boolean") return { value: raw };
@@ -537,11 +543,11 @@ function _coerceValue(raw, varType) {
     case "Long Integer":
     case "Decimal":
     case "Currency":
-      return _coerceNumericValue(raw, varType);
+      return _coerceNumericValue(raw, varType, currentValue);
     case "Date":
     case "Time":
     case "Date Time":
-      return _coerceDateValue(raw, varType);
+      return _coerceDateValue(raw, varType, currentValue);
     default:
       return { value: String(raw) };
   }
@@ -551,7 +557,7 @@ function _coerceValue(raw, varType) {
  * Convert a raw numeric string into the OS-internal representation for
  * Currency, Decimal, and Long Integer types.
  */
-function _coerceNumericValue(raw, varType) {
+function _coerceNumericValue(raw, varType, currentValue) {
   // Validate it looks like a number first
   const parsed = varType === "Long Integer" ? parseInt(raw, 10) : parseFloat(raw);
   if (isNaN(parsed)) return { error: "Invalid number: " + raw };
@@ -569,6 +575,21 @@ function _coerceNumericValue(raw, varType) {
       if (converted !== undefined && converted !== null) {
         return { value: converted };
       }
+    } catch (e) { /* fall through */ }
+  }
+
+  // ODC: construct wrapper from the current value's constructor (or cached)
+  var wrapCtor = null;
+  if (currentValue && typeof currentValue === "object" && currentValue.constructor
+      && currentValue.constructor !== Number && currentValue.constructor !== Object) {
+    wrapCtor = currentValue.constructor;
+    _wrapperCtorCache[varType] = wrapCtor;
+  } else if (_wrapperCtorCache[varType]) {
+    wrapCtor = _wrapperCtorCache[varType];
+  }
+  if (wrapCtor) {
+    try {
+      return { value: new wrapCtor(parsed) };
     } catch (e) { /* fall through to plain number */ }
   }
 
@@ -579,7 +600,7 @@ function _coerceNumericValue(raw, varType) {
  * Convert a raw date/time string from the HTML input into the value
  * expected by the OutSystems clientVarsService.setVariable().
  */
-function _coerceDateValue(raw, varType) {
+function _coerceDateValue(raw, varType, currentValue) {
   // --- Attempt 1: OutSystems ServerDataConverter.from() -----------------
   const OS = window.__osRuntime;
   if (OS && OS.DataConversion && OS.DataConversion.ServerDataConverter) {
@@ -609,27 +630,40 @@ function _coerceDateValue(raw, varType) {
   }
 
   // --- Attempt 2: construct Date with numeric components ----------------
+  var d;
   if (varType === "Date") {
     const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
     if (!m) return { error: "Invalid date: " + raw };
-    const d = new Date(+m[1], +m[2] - 1, +m[3]);
+    d = new Date(+m[1], +m[2] - 1, +m[3]);
     if (isNaN(d.getTime())) return { error: "Invalid date: " + raw };
-    return { value: d };
-  }
-
-  if (varType === "Time") {
+  } else if (varType === "Time") {
     const m = raw.match(/^(\d{2}):(\d{2})(?::(\d{2}))?$/);
     if (!m) return { error: "Invalid time: " + raw };
-    const d = new Date(1900, 0, 1, +m[1], +m[2], m[3] ? +m[3] : 0);
+    d = new Date(1900, 0, 1, +m[1], +m[2], m[3] ? +m[3] : 0);
     if (isNaN(d.getTime())) return { error: "Invalid time: " + raw };
-    return { value: d };
+  } else {
+    // Date Time
+    const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/);
+    if (!m) return { error: "Invalid date/time: " + raw };
+    d = new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], m[6] ? +m[6] : 0);
+    if (isNaN(d.getTime())) return { error: "Invalid date/time: " + raw };
   }
 
-  // Date Time
-  const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/);
-  if (!m) return { error: "Invalid date/time: " + raw };
-  const d = new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], m[6] ? +m[6] : 0);
-  if (isNaN(d.getTime())) return { error: "Invalid date/time: " + raw };
+  // ODC: wrap in DateTime constructor from the current value (or cached)
+  var wrapCtor = null;
+  if (currentValue && typeof currentValue === "object" && currentValue.constructor
+      && currentValue.constructor !== Date) {
+    wrapCtor = currentValue.constructor;
+    _wrapperCtorCache[varType] = wrapCtor;
+  } else if (_wrapperCtorCache[varType]) {
+    wrapCtor = _wrapperCtorCache[varType];
+  }
+  if (wrapCtor) {
+    try {
+      return { value: new wrapCtor(d) };
+    } catch (e) { /* fall through to plain Date */ }
+  }
+
   return { value: d };
 }
 

@@ -104,7 +104,8 @@ function _osScreenVarsSet(internalName, rawValue, dataType, viewIndex) {
       return { ok: false, error: "Screen model not found." };
     }
 
-    const coerced = _coerceValue(rawValue, dataType);
+    const currentValue = model.variables[internalName];
+    const coerced = _coerceValue(rawValue, dataType, currentValue);
     if (coerced.error) return { ok: false, error: coerced.error };
 
     model.variables[internalName] = coerced.value;
@@ -187,7 +188,8 @@ function _osScreenVarDeepSet(internalName, path, rawValue, dataType, viewIndex) 
       if (!_isList(target)) {
         return { ok: false, error: "Expected list at leaf but got " + typeof target };
       }
-      const coerced = _coerceValue(rawValue, dataType);
+      const listCurrentValue = _listGet(target, leafKey.index);
+      const coerced = _coerceValue(rawValue, dataType, listCurrentValue);
       if (coerced.error) return { ok: false, error: coerced.error };
 
       if (typeof target.setItem === "function") {
@@ -204,7 +206,13 @@ function _osScreenVarDeepSet(internalName, path, rawValue, dataType, viewIndex) 
       return { ok: true, newValue };
     }
 
-    const coerced = _coerceValue(rawValue, dataType);
+    let leafCurrentValue;
+    if (target && typeof target.get === "function" && !_isList(target)) {
+      leafCurrentValue = target.get(leafKey);
+    } else if (target) {
+      leafCurrentValue = target[leafKey];
+    }
+    const coerced = _coerceValue(rawValue, dataType, leafCurrentValue);
     if (coerced.error) return { ok: false, error: coerced.error };
 
     // Set via record .set() method if available, otherwise direct property assignment

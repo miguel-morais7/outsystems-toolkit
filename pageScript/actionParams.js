@@ -213,7 +213,8 @@ function _osActionParamDeepSet(methodName, attrName, path, rawValue, dataType) {
       if (!_isList(target)) {
         return { ok: false, error: "Expected list at leaf but got " + typeof target };
       }
-      var coerced = _coerceValue(rawValue, dataType);
+      var listCurrentValue = _listGet(target, leafKey.index);
+      var coerced = _coerceValue(rawValue, dataType, listCurrentValue);
       if (coerced.error) return { ok: false, error: coerced.error };
       if (typeof target.set === "function") {
         target.set(leafKey.index, coerced.value);
@@ -226,7 +227,13 @@ function _osActionParamDeepSet(methodName, attrName, path, rawValue, dataType) {
       return { ok: true, newValue: newValue };
     }
 
-    var coerced = _coerceValue(rawValue, dataType);
+    var leafCurrentValue;
+    if (target && typeof target.get === "function" && !_isList(target)) {
+      leafCurrentValue = target.get(leafKey);
+    } else if (target) {
+      leafCurrentValue = target[leafKey];
+    }
+    var coerced = _coerceValue(rawValue, dataType, leafCurrentValue);
     if (coerced.error) return { ok: false, error: coerced.error };
 
     if (target && typeof target.set === "function" && !_isList(target)) {

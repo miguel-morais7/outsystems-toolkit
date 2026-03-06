@@ -171,12 +171,13 @@ function _osClientVarsSet(moduleName, varName, rawValue, varType) {
     if (typeof mod[setterName] !== "function")
       return { ok: false, error: "Setter not found: " + setterName };
 
-    const coerced = _coerceValue(rawValue, varType);
+    const getterName = "get" + varName;
+    const currentValue = typeof mod[getterName] === "function" ? mod[getterName]() : undefined;
+    const coerced = _coerceValue(rawValue, varType, currentValue);
     if (coerced.error) return { ok: false, error: coerced.error };
     mod[setterName](coerced.value);
 
     // Read back the value to confirm
-    const getterName = "get" + varName;
     let newValue = null;
     if (typeof mod[getterName] === "function") {
       newValue = _safeSerialize(mod[getterName]());
