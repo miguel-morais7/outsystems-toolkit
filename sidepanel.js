@@ -302,9 +302,13 @@ async function doScanODC(result) {
   const liveBlocks = (liveResult?.ok && liveResult.blocks) ? liveResult.blocks : [];
 
   if (liveBlocks.length > 0) {
-    // Build synthetic block entries from live discovery data
+    // Build synthetic block entries from live discovery data.
+    // Prefer dataBlockAttr for naming (reliable DOM source) over modulePath
+    // (extracted from minified source, can be truncated).
+    // Append viewIndex to fullName to keep IDs unique when the same block
+    // type appears multiple times (e.g. several AccordionItem instances).
     const odcBlocks = liveBlocks.map(lb => {
-      const path = lb.modulePath || lb.dataBlockAttr || "";
+      const path = lb.dataBlockAttr || lb.modulePath || "";
       const parts = path.split(".");
       const name = parts[parts.length - 1] || `Block ${lb.viewIndex}`;
       const module = parts.length > 1 ? parts.slice(0, -1).join(".") : (parts[0] || "Blocks");
@@ -314,7 +318,8 @@ async function doScanODC(result) {
         controllerModuleName: path,
         module,
         group: module,
-        fullName: path || `block-${lb.viewIndex}`,
+        fullName: (path || "block") + "#" + lb.viewIndex,
+        viewIndex: lb.viewIndex,
       };
     });
     blocks.setData(odcBlocks, "", moduleName, liveBlocks, "odc");

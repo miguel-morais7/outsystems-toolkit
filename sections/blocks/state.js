@@ -48,10 +48,15 @@ export function setData(blocks, baseUrl, modName, liveBlocks, platform) {
 
 /**
  * Find the live block entry that matches a parsed block.
- * Tries exact modulePath match first, then falls back to suffix-matching
- * the data-block DOM attribute against the block's controllerModuleName.
+ * For ODC synthetic entries, the block carries a viewIndex for direct lookup.
+ * For Reactive entries, tries exact modulePath match first, then falls back
+ * to suffix-matching the data-block DOM attribute.
  */
 export function findLiveBlock(block) {
+  // ODC: synthetic block entries carry viewIndex for direct match
+  if (block.viewIndex !== undefined) {
+    return state.liveBlocks.find(lb => lb.viewIndex === block.viewIndex) || null;
+  }
   const basePath = block.controllerModuleName.replace(/\.mvc\$controller$/, "");
   for (const lb of state.liveBlocks) {
     if (lb.modulePath && basePath === lb.modulePath) return lb;

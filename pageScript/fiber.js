@@ -314,22 +314,22 @@ function _osDiscoverBlocks() {
       return { ok: true, blocks: [] };
     }
 
-    // Build a Map of view instance → data-block attribute from the content area
+    // Build a Map of controller → data-block attribute from the content area
     var contentViews = _findContentAreaViewInstances();
 
     var blocks = [];
     for (var i = 1; i < all.length; i++) {
       var entry = all[i];
-      // If we found content-area views, filter to only those
-      if (contentViews && !contentViews.has(entry.viewInstance)) continue;
-
       var ctrl = entry.viewInstance.controller;
+      // If we found content-area views, filter to only those
+      if (contentViews && !contentViews.has(ctrl)) continue;
+
       var proto = Object.getPrototypeOf(ctrl);
       var modulePath = _extractModulePath(proto);
 
       // data-block attribute (e.g. "WebBlocks.PickzoneIdCombo") serves as
       // a fallback identifier when _extractModulePath cannot find the path.
-      var dataBlockAttr = contentViews ? (contentViews.get(entry.viewInstance) || "") : "";
+      var dataBlockAttr = contentViews ? (contentViews.get(ctrl) || "") : "";
 
       blocks.push({
         viewIndex: entry.viewIndex,
@@ -348,9 +348,13 @@ function _osDiscoverBlocks() {
 /**
  * Find all view instances whose DOM block element ([data-block]) is inside
  * the screen's <main> content area or inside an open popup dialog.
- * Returns a Map of viewInstance → data-block attribute value, or null when
+ * Returns a Map of controller → data-block attribute value, or null when
  * neither the content area nor any popup dialogs can be located (caller
  * should fall back to showing all blocks).
+ *
+ * Keyed by controller (not the view wrapper) because in ODC apps the same
+ * controller is wrapped in different fiber nodes during DFS vs. walk-up,
+ * producing different wrapper objects.  Controller identity is stable.
  */
 function _findContentAreaViewInstances() {
   var contentArea = document.querySelector("main") || document.querySelector("[role='main']");
@@ -381,7 +385,7 @@ function _findContentAreaViewInstances() {
     while (current) {
       var view = _getViewFromFiber(current);
       if (view) {
-        views.set(view, dataBlock || "");
+        views.set(view.controller, dataBlock || "");
         break;
       }
       current = current.return;
@@ -391,11 +395,11 @@ function _findContentAreaViewInstances() {
 }
 
 /**
- * Map ALL [data-block] elements on the page to their nearest view instance.
+ * Map ALL [data-block] elements on the page to their nearest view controller.
  * Unlike _findContentAreaViewInstances (which only searches inside <main>),
  * this searches the entire document so layout/structural blocks outside
  * the content area also get names.
- * Returns a Map of viewInstance → data-block attribute value.
+ * Returns a Map of controller → data-block attribute value.
  */
 function _findAllDataBlockMappings() {
   var blockEls = document.querySelectorAll("[data-block]");
@@ -408,9 +412,9 @@ function _findAllDataBlockMappings() {
     while (current) {
       var view = _getViewFromFiber(current);
       if (view) {
-        // First (nearest) data-block wins for each view instance
-        if (!views.has(view)) {
-          views.set(view, dataBlock || "");
+        // First (nearest) data-block wins for each controller
+        if (!views.has(view.controller)) {
+          views.set(view.controller, dataBlock || "");
         }
         break;
       }
@@ -508,7 +512,7 @@ function _osGetBlockTree() {
       }
 
       // Fallback: use data-block attribute (searched across entire document)
-      var dataBlockAttr = allDataBlocks.get(entry.viewInstance) || "";
+      var dataBlockAttr = allDataBlocks.get(ctrl) || "";
       if (!name && dataBlockAttr) {
         var attrParts = dataBlockAttr.split(".");
         name = attrParts[attrParts.length - 1];
@@ -530,7 +534,7 @@ function _osGetBlockTree() {
         modulePath: modulePath,
         dataBlockAttr: dataBlockAttr,
         name: name,
-        isContentArea: i === 0 || (contentViews ? contentViews.has(entry.viewInstance) : false),
+        isContentArea: i === 0 || (contentViews ? contentViews.has(ctrl) : false),
       });
     }
 
