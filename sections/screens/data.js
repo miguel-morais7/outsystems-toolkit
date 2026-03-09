@@ -38,23 +38,28 @@ export async function toggleScreenExpand(screenUrl, flow, screenName) {
     let details;
 
     if (state.platform === "odc") {
-      // ODC: runtime-only discovery — no static mvc.js to parse
-      details = {
-        inputParameters: [],
-        localVariables: [],
-        aggregates: [],
-        dataActions: [],
-        serverActions: [],
-        screenActions: [],
-      };
-      // Discover everything from the live runtime
-      await Promise.all([
-        fetchLiveValues(details),
-        enrichScreenActions(details),
-        enrichDataActions(details),
-        enrichAggregates(details),
-        enrichServerActions(details),
-      ]);
+      if (!isCurrent) {
+        // Non-current ODC screen — no runtime data available
+        details = { notCurrentMessage: "Navigate to this screen to inspect its runtime data." };
+      } else {
+        // ODC: runtime-only discovery — no static mvc.js to parse
+        details = {
+          inputParameters: [],
+          localVariables: [],
+          aggregates: [],
+          dataActions: [],
+          serverActions: [],
+          screenActions: [],
+        };
+        // Discover everything from the live runtime
+        await Promise.all([
+          fetchLiveValues(details),
+          enrichScreenActions(details),
+          enrichDataActions(details),
+          enrichAggregates(details),
+          enrichServerActions(details),
+        ]);
+      }
     } else {
       // Reactive: static parse first, then enrich with runtime
       const response = await sendMessage({

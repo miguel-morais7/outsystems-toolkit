@@ -42,6 +42,10 @@ export function buildSubSection(entityKey, key, title, contentHtml, collapsedSub
  * @param {Function} [buildRoleBadges] - Optional function to build role badges HTML
  */
 export function buildDetails(details, isLive, roles, entityKey, collapsedSubSections, expansionMaps, buildRoleBadges) {
+  if (details.notCurrentMessage) {
+    return `<div class="screen-details-info">${esc(details.notCurrentMessage)}</div>`;
+  }
+
   let html = "";
 
   // Roles (skip if already shown inline as Public/Registered badge)

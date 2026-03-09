@@ -255,29 +255,50 @@ async function doScanODC(result) {
   builtinFunctions.setData([]);
   hide(builtinFunctions.sectionEl);
 
-  // Create synthetic current-screen entry from the page URL
+  // Extract moduleName from URL for ODC_SCAN_DATA_MODELS
   const tab = await chrome.tabs.query({ active: true, currentWindow: true }).then(t => t[0]);
   const pageUrl = tab ? tab.url : "";
-  let screenName = "Screen";
   let moduleName = "";
   try {
     const pathParts = new URL(pageUrl).pathname.split("/").filter(Boolean);
-    if (pathParts.length > 0) screenName = pathParts[pathParts.length - 1];
     if (pathParts.length > 1) moduleName = pathParts[pathParts.length - 2];
   } catch (_) {}
 
-  screens.setData(
-    [{ name: screenName, screenUrl: screenName, flow: "Current", roles: [] }],
-    "", moduleName, screenName, "", "odc"
-  );
-  screens.render();
-
-  // Discover live blocks, roles, and data models in parallel
-  const [liveResult, odcRolesResult, dataModelsResult] = await Promise.all([
+  // Discover live blocks, roles, data models, and screen list in parallel
+  const [liveResult, odcRolesResult, dataModelsResult, screensResult] = await Promise.all([
     sendMessage({ action: "DISCOVER_BLOCKS" }).catch(() => null),
     sendMessage({ action: "ODC_SCAN_ROLES" }).catch(() => null),
     sendMessage({ action: "ODC_SCAN_DATA_MODELS", moduleName }).catch(() => null),
+    sendMessage({ action: "FETCH_SCREENS" }).catch(() => null),
   ]);
+
+  // Screen list — use FETCH_SCREENS if available, fall back to synthetic entry
+  if (screensResult?.ok) {
+    screens.setData(
+      screensResult.screens || [],
+      screensResult.baseUrl || "",
+      screensResult.moduleName || moduleName,
+      screensResult.currentScreen || "",
+      screensResult.homeScreenName || "",
+      "odc"
+    );
+    if (screensResult.versionInfo) {
+      appmetadata.setVersionInfo(screensResult.versionInfo);
+      appmetadata.render();
+    }
+  } else {
+    // Fallback: synthetic single-screen entry from URL
+    let screenName = "Screen";
+    try {
+      const pathParts = new URL(pageUrl).pathname.split("/").filter(Boolean);
+      if (pathParts.length > 0) screenName = pathParts[pathParts.length - 1];
+    } catch (_) {}
+    screens.setData(
+      [{ name: screenName, screenUrl: screenName, flow: "Current", roles: [] }],
+      "", moduleName, screenName, "", "odc"
+    );
+  }
+  screens.render();
   const liveBlocks = (liveResult?.ok && liveResult.blocks) ? liveResult.blocks : [];
 
   if (liveBlocks.length > 0) {
