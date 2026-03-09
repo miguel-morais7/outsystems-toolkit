@@ -109,6 +109,7 @@ async function doInjection(tabId) {
         "pageScript/aggregates.js",
         "pageScript/serverActions.js",
         "pageScript/builtinFunctions.js",
+        "pageScript/roles.js",
       ],
     });
   }
