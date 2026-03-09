@@ -992,6 +992,13 @@ body {
   padding: 4px 0;
 }
 
+.screen-details-info {
+  color: var(--text-muted);
+  font-size: 13px;
+  font-style: italic;
+  padding: 8px 0;
+}
+
 .screen-detail-section {
   margin-bottom: 8px;
 }
