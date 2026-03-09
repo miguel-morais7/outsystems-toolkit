@@ -48,17 +48,7 @@ async function _osOdcRolesScan() {
     window.__osODC_hasRole = null;
 
     // 1. Collect unique _oschunk-*.js URLs
-    var urls = [];
-    var seen = {};
-    var entries = performance.getEntriesByType("resource");
-    for (var i = 0; i < entries.length; i++) {
-      var e = entries[i];
-      if (e.initiatorType === "script" && /_oschunk-[^.]+\.js/.test(e.name) && !seen[e.name]) {
-        seen[e.name] = true;
-        urls.push(e.name);
-      }
-    }
-
+    var urls = _osOdcCollectChunkUrls();
     if (urls.length === 0) {
       return { ok: true, roles: [] };
     }

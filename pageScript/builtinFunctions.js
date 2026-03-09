@@ -426,15 +426,7 @@ function _osOdcDateOverrideRemove(type) {
 function _osOdcDiscoverBuiltins() {
   if (window.__osOdcBuiltinFuncs) return Promise.resolve(window.__osOdcBuiltinFuncs);
 
-  var entries = performance.getEntriesByType("resource")
-    .filter(function (e) { return /_oschunk-[^.]+\.js/.test(e.name); })
-    .map(function (e) { return e.name; });
-
-  var unique = [];
-  var seen = {};
-  for (var i = 0; i < entries.length; i++) {
-    if (!seen[entries[i]]) { seen[entries[i]] = true; unique.push(entries[i]); }
-  }
+  var unique = _osOdcCollectChunkUrls();
 
   var promises = unique.map(function (url) {
     return import(url).then(function (mod) { return mod; }).catch(function () { return null; });
