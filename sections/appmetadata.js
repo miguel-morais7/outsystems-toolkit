@@ -95,18 +95,25 @@ export function render() {
  * display-friendly { label, value, key } entries.
  */
 function buildEntries(appDef) {
+  // Shared fields (present in both Reactive and ODC)
   const fields = [
-    { key: "applicationName",   label: "Application" },
-    { key: "environmentName",   label: "Environment" },
-    { key: "debugEnabled",      label: "Debug Mode" },
-    { key: "homeModuleName",    label: "Home Module" },
-    { key: "userProviderName",  label: "User Provider" },
-    { key: "defaultTransition", label: "Transition" },
-    { key: "isWeb",             label: "Is Web" },
-    { key: "showWatermark",     label: "Watermark" },
-    { key: "applicationKey",    label: "App Key" },
-    { key: "environmentKey",    label: "Environment Key" },
-    { key: "homeModuleKey",     label: "Module Key" },
+    { key: "applicationName",          label: "Application" },
+    { key: "environmentName",          label: "Environment" },
+    { key: "debugEnabled",             label: "Debug Mode" },
+    { key: "homeModuleName",           label: "Home Module" },
+    { key: "userProviderName",         label: "User Provider" },
+    { key: "defaultTransition",        label: "Transition" },
+    { key: "isWeb",                    label: "Is Web" },
+    { key: "showWatermark",            label: "Watermark" },
+    { key: "applicationKey",           label: "App Key" },
+    { key: "environmentKey",           label: "Environment Key" },
+    { key: "homeModuleKey",            label: "Module Key" },
+    // ODC-specific fields
+    { key: "defaultScreenName",        label: "Default Screen" },
+    { key: "appVersion",               label: "App Version" },
+    { key: "clientRuntimeVersion",     label: "Runtime Version" },
+    { key: "buildSDKVersion",          label: "Build SDK" },
+    { key: "frontendBuildWorkerVersion", label: "Build Worker" },
   ];
 
   const entries = [];

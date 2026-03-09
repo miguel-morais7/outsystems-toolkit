@@ -212,7 +212,7 @@ const PAGE_ACTIONS = {
   OVERRIDE_BUILTIN_FUNCTIONS:{ func: (p, o) => p === "odc" ? _osOdcBuiltinFunctionsOverride(o) : _osBuiltinFunctionsOverride(o), args: msg => [msg._platform, msg.overrides] },
   RESTORE_BUILTIN_FUNCTIONS: { func: (p, n) => p === "odc" ? _osOdcBuiltinFunctionRestore(n) : _osBuiltinFunctionRestore(n),     args: msg => [msg._platform, msg.name] },
   DISCOVER_PRODUCER_RESOURCES:{ func: () => _osProducerResourceUrls(),                                                args: () => [] },
-  SCAN_APP_DEFINITION:       { func: () => _osAppDefinitionScan(),                                                   args: () => [] },
+  SCAN_APP_DEFINITION:       { func: (p) => p === "odc" ? _osOdcAppDefinitionScan() : _osAppDefinitionScan(),        args: msg => [msg._platform] },
   ODC_SCAN_DATA_MODELS:      { func: (mod) => _osOdcDataModelsScan(mod),                                              args: msg => [msg.moduleName] },
 };
 
@@ -240,7 +240,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (pageAction) {
     // For platform-aware actions, resolve platform before building args
     const prepare = (action === "SCAN" || action === "SET" || action === "GET" ||
-      action === "GET_BUILTIN_FUNCTIONS" || action === "OVERRIDE_BUILTIN_FUNCTIONS" || action === "RESTORE_BUILTIN_FUNCTIONS")
+      action === "GET_BUILTIN_FUNCTIONS" || action === "OVERRIDE_BUILTIN_FUNCTIONS" || action === "RESTORE_BUILTIN_FUNCTIONS" ||
+      action === "SCAN_APP_DEFINITION")
       ? getActiveTab().then(tab => { message._platform = tabPlatform.get(tab.id) || "unknown"; }).catch(() => { message._platform = "unknown"; })
       : Promise.resolve();
 

@@ -238,10 +238,6 @@ async function doScanReactive(result) {
  * data models, roles, producers).
  */
 async function doScanODC(result) {
-  // App metadata — ODC has no appDefinition module
-  appmetadata.setData(null, "odc");
-  appmetadata.render();
-
   // Client variables — now supported on ODC via _osOdcClientVarsScan
   variables.setData(result.variables || [], result.modules || []);
   variables.populateModuleFilter();
@@ -261,8 +257,9 @@ async function doScanODC(result) {
     if (pathParts.length > 1) moduleName = pathParts[pathParts.length - 2];
   } catch (_) {}
 
-  // Discover live blocks, roles, data models, screen list, and builtin functions in parallel
-  const [liveResult, odcRolesResult, dataModelsResult, screensResult, bfResult] = await Promise.all([
+  // Discover app definition, live blocks, roles, data models, screen list, and builtin functions in parallel
+  const [appDefResult, liveResult, odcRolesResult, dataModelsResult, screensResult, bfResult] = await Promise.all([
+    sendMessage({ action: "SCAN_APP_DEFINITION" }).catch(() => null),
     sendMessage({ action: "DISCOVER_BLOCKS" }).catch(() => null),
     sendMessage({ action: "ODC_SCAN_ROLES" }).catch(() => null),
     sendMessage({ action: "ODC_SCAN_DATA_MODELS", moduleName }).catch(() => null),
@@ -271,6 +268,10 @@ async function doScanODC(result) {
       .then(() => sendMessage({ action: "GET_BUILTIN_FUNCTIONS" }))
       .catch(() => null),
   ]);
+
+  // App metadata (from ODC chunk discovery)
+  appmetadata.setData(appDefResult?.appDefinition || null, "odc");
+  appmetadata.render();
 
   // Screen list — use FETCH_SCREENS if available, fall back to synthetic entry
   if (screensResult?.ok) {

@@ -11,6 +11,7 @@
  *   - Serialization (_safeSerialize)
  *   - Type detection (_detectOsType)
  *   - UI trigger (_flushAndRerender)
+ *   - ODC chunk discovery (_osOdcCollectChunkUrls)
  */
 
 /* ------------------------------------------------------------------ */
@@ -736,4 +737,23 @@ function _safeSerialize(value) {
   } catch {
     return String(value);
   }
+}
+
+/* ------------------------------------------------------------------ */
+/*  ODC chunk URL discovery                                            */
+/* ------------------------------------------------------------------ */
+
+/** Collect unique _oschunk-*.js URLs from performance resource entries. */
+function _osOdcCollectChunkUrls() {
+  var urls = [];
+  var seen = {};
+  var entries = performance.getEntriesByType("resource");
+  for (var i = 0; i < entries.length; i++) {
+    var e = entries[i];
+    if (e.initiatorType === "script" && /_oschunk-[^.]+\.js/.test(e.name) && !seen[e.name]) {
+      seen[e.name] = true;
+      urls.push(e.name);
+    }
+  }
+  return urls;
 }
