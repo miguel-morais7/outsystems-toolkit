@@ -208,9 +208,9 @@ const PAGE_ACTIONS = {
   INVOKE_SERVER_ACTION:      { func: (m, p, vi) => _osServerActionInvoke(m, p, vi),                               args: msg => [msg.methodName, msg.paramValues || [], msg.viewIndex] },
   DISCOVER_BLOCKS:           { func: () => _osDiscoverBlocks(),                                                     args: () => [] },
   GET_BLOCK_TREE:            { func: () => _osGetBlockTree(),                                                       args: () => [] },
-  GET_BUILTIN_FUNCTIONS:     { func: () => _osBuiltinFunctionsGet(),                                                args: () => [] },
-  OVERRIDE_BUILTIN_FUNCTIONS:{ func: (o) => _osBuiltinFunctionsOverride(o),                                         args: msg => [msg.overrides] },
-  RESTORE_BUILTIN_FUNCTIONS: { func: (n) => _osBuiltinFunctionRestore(n),                                           args: msg => [msg.name] },
+  GET_BUILTIN_FUNCTIONS:     { func: (p) => p === "odc" ? _osOdcBuiltinFunctionsGet() : _osBuiltinFunctionsGet(),                args: msg => [msg._platform] },
+  OVERRIDE_BUILTIN_FUNCTIONS:{ func: (p, o) => p === "odc" ? _osOdcBuiltinFunctionsOverride(o) : _osBuiltinFunctionsOverride(o), args: msg => [msg._platform, msg.overrides] },
+  RESTORE_BUILTIN_FUNCTIONS: { func: (p, n) => p === "odc" ? _osOdcBuiltinFunctionRestore(n) : _osBuiltinFunctionRestore(n),     args: msg => [msg._platform, msg.name] },
   DISCOVER_PRODUCER_RESOURCES:{ func: () => _osProducerResourceUrls(),                                                args: () => [] },
   SCAN_APP_DEFINITION:       { func: () => _osAppDefinitionScan(),                                                   args: () => [] },
   ODC_SCAN_DATA_MODELS:      { func: (mod) => _osOdcDataModelsScan(mod),                                              args: msg => [msg.moduleName] },
@@ -239,7 +239,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   const pageAction = PAGE_ACTIONS[action];
   if (pageAction) {
     // For platform-aware actions, resolve platform before building args
-    const prepare = (action === "SCAN" || action === "SET" || action === "GET")
+    const prepare = (action === "SCAN" || action === "SET" || action === "GET" ||
+      action === "GET_BUILTIN_FUNCTIONS" || action === "OVERRIDE_BUILTIN_FUNCTIONS" || action === "RESTORE_BUILTIN_FUNCTIONS")
       ? getActiveTab().then(tab => { message._platform = tabPlatform.get(tab.id) || "unknown"; }).catch(() => { message._platform = "unknown"; })
       : Promise.resolve();
 

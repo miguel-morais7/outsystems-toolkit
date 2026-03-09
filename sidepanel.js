@@ -252,9 +252,6 @@ async function doScanODC(result) {
   hide(roles.sectionEl);
   producers.setData([], []);
   hide(producers.sectionEl);
-  builtinFunctions.setData([]);
-  hide(builtinFunctions.sectionEl);
-
   // Extract moduleName from URL for ODC_SCAN_DATA_MODELS
   const tab = await chrome.tabs.query({ active: true, currentWindow: true }).then(t => t[0]);
   const pageUrl = tab ? tab.url : "";
@@ -264,12 +261,15 @@ async function doScanODC(result) {
     if (pathParts.length > 1) moduleName = pathParts[pathParts.length - 2];
   } catch (_) {}
 
-  // Discover live blocks, roles, data models, and screen list in parallel
-  const [liveResult, odcRolesResult, dataModelsResult, screensResult] = await Promise.all([
+  // Discover live blocks, roles, data models, screen list, and builtin functions in parallel
+  const [liveResult, odcRolesResult, dataModelsResult, screensResult, bfResult] = await Promise.all([
     sendMessage({ action: "DISCOVER_BLOCKS" }).catch(() => null),
     sendMessage({ action: "ODC_SCAN_ROLES" }).catch(() => null),
     sendMessage({ action: "ODC_SCAN_DATA_MODELS", moduleName }).catch(() => null),
     sendMessage({ action: "FETCH_SCREENS" }).catch(() => null),
+    builtinFunctions.reapplyOverrides()
+      .then(() => sendMessage({ action: "GET_BUILTIN_FUNCTIONS" }))
+      .catch(() => null),
   ]);
 
   // Screen list — use FETCH_SCREENS if available, fall back to synthetic entry
@@ -359,6 +359,15 @@ async function doScanODC(result) {
   } else {
     roles.setData([]);
     hide(roles.sectionEl);
+  }
+
+  // Built-in Functions
+  if (bfResult?.ok && bfResult.functions.length > 0) {
+    builtinFunctions.setData(bfResult.functions);
+    builtinFunctions.render();
+  } else {
+    builtinFunctions.setData([]);
+    hide(builtinFunctions.sectionEl);
   }
 }
 
