@@ -92,7 +92,7 @@ function _osDataActionsGet(viewIndex) {
           // Skip internal dataFetchStatus attribute
           if (oa.attrName === "dataFetchStatusAttr") continue;
 
-          var dataType = _DATA_TYPE_NAMES[oa.dataType] || "Object";
+          var dataType = _getDataTypeName(oa.dataType) || "Object";
           var isComplex = dataType === "Record" || dataType === "RecordList" ||
                           dataType === "Object" || dataType === "BinaryData";
 

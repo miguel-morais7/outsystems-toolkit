@@ -89,7 +89,7 @@ function _osServerActionsGet(viewIndex) {
               outputs.push({
                 name: attr.name,
                 attrName: attr.attrName,
-                dataType: _DATA_TYPE_NAMES[attr.dataType] || "Text",
+                dataType: _getDataTypeName(attr.dataType) || "Text",
                 mandatory: !!attr.mandatory
               });
             }
@@ -207,7 +207,7 @@ function _readServerActionOutputs(ctrl, methodName, resultObj) {
     var attrs = VarType.attributesToDeclare();
     for (var i = 0; i < attrs.length; i++) {
       var attr = attrs[i];
-      var dataType = _DATA_TYPE_NAMES[attr.dataType] || "Text";
+      var dataType = _getDataTypeName(attr.dataType) || "Text";
       var isComplex = dataType === "Record" || dataType === "RecordList" ||
                       dataType === "Object" || dataType === "BinaryData";
 

@@ -40,7 +40,7 @@ function _osScreenVarsGet(varDefs, viewIndex) {
             return {
               name: attr.name || attr.attrName,
               internalName: attr.attrName,
-              type: _DATA_TYPE_NAMES[attr.dataType] || "Text",
+              type: _getDataTypeName(attr.dataType) || "Text",
               isInput: false,
             };
           });

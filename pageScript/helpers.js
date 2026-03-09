@@ -3,7 +3,7 @@
  *
  * Injected FIRST into the page's MAIN world. Provides:
  *   - List abstraction (_isList, _listCount, _listGet)
- *   - Record metadata (_getRecordFieldTypes, _DATA_TYPE_NAMES)
+ *   - Record metadata (_getRecordFieldTypes, _getDataTypeName)
  *   - Introspection (_introspectValue)
  *   - Path navigation (_navigateToPath)
  *   - List operations (_appendToList, _deleteFromList)
@@ -65,6 +65,17 @@ var _DATA_TYPE_NAMES = {
   14: "Object",
 };
 
+// ODC shifts: 14=FileRef, 15=Object
+var _DATA_TYPE_NAMES_ODC = Object.assign({}, _DATA_TYPE_NAMES, {
+  14: "FileRef",
+  15: "Object",
+});
+
+function _getDataTypeName(enumValue) {
+  var map = window.__osRuntime ? _DATA_TYPE_NAMES_ODC : _DATA_TYPE_NAMES;
+  return map[enumValue];
+}
+
 /* ------------------------------------------------------------------ */
 /*  Record Metadata                                                    */
 /* ------------------------------------------------------------------ */
@@ -103,7 +114,7 @@ function _getRecordFieldTypes(recordInstance) {
         var args = captured[i];
         var internalName = args[1];
         var typeEnum = args[5];
-        var typeName = _DATA_TYPE_NAMES[typeEnum];
+        var typeName = _getDataTypeName(typeEnum);
         if (internalName && typeName !== undefined) {
           typeMap[internalName] = typeName;
         }
@@ -113,7 +124,7 @@ function _getRecordFieldTypes(recordInstance) {
     else if (Array.isArray(ctor.Attributes)) {
       for (var j = 0; j < ctor.Attributes.length; j++) {
         var attr = ctor.Attributes[j];
-        var attrTypeName = _DATA_TYPE_NAMES[attr.dataType];
+        var attrTypeName = _getDataTypeName(attr.dataType);
         if (attr.attrName && attrTypeName !== undefined) {
           typeMap[attr.attrName] = attrTypeName;
         }

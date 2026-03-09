@@ -110,7 +110,7 @@ function _osScreenActionsGet(viewIndex) {
               var entry = {
                 name: attr.name,
                 attrName: attr.attrName,
-                dataType: _DATA_TYPE_NAMES[attr.dataType] || "Text",
+                dataType: _getDataTypeName(attr.dataType) || "Text",
                 mandatory: !!attr.mandatory
               };
               if (inputAttrNames.has(attr.attrName)) {

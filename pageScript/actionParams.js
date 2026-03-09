@@ -122,7 +122,7 @@ function _osActionParamInit(methodName, attrName, maxListItems, viewIndex) {
     }
 
     // Strategy 3: For lists, try to create an empty list
-    if (defaultValue === null && _DATA_TYPE_NAMES[targetAttr.dataType] === "RecordList") {
+    if (defaultValue === null && _getDataTypeName(targetAttr.dataType) === "RecordList") {
       try {
         if (window.__osRuntime && window.__osRuntime.DataStructures) {
           defaultValue = new window.__osRuntime.DataStructures.DataRecord.DataRecordList();
