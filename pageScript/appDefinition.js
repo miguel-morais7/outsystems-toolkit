@@ -42,7 +42,7 @@ function _osAppDefinitionScan() {
     setTimeout(() => {
       if (!resolved) {
         resolved = true;
-        resolve({ ok: true, appDefinition: null });
+        resolve({ ok: false, error: "Scan timed out" });
       }
     }, SCAN_TIMEOUT_MS);
 
@@ -74,7 +74,7 @@ function _osAppDefinitionScan() {
     } catch (e) {
       if (!resolved) {
         resolved = true;
-        resolve({ ok: true, appDefinition: null });
+        resolve({ ok: false, error: e.message });
       }
     }
   });

@@ -98,7 +98,11 @@ async function doScanReactive(result) {
   const [screenResult, rolesResult, producersResult, appDefResult] = await Promise.all([
     sendMessage({ action: "FETCH_SCREENS" }).catch(() => null),
     sendMessage({ action: "FETCH_ROLES" }).catch(() => null),
-    sendMessage({ action: "SCAN_PRODUCERS" }).catch(() => null),
+    sendMessage({ action: "DISCOVER_PRODUCER_RESOURCES" })
+      .then(res => res?.ok && Object.keys(res.resources).length > 0
+        ? sendMessage({ action: "FETCH_PRODUCERS", resources: res.resources })
+        : { ok: true, producerModules: [], producers: [] })
+      .catch(() => null),
     sendMessage({ action: "SCAN_APP_DEFINITION" }).catch(() => null),
   ]);
 

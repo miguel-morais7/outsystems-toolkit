@@ -119,6 +119,64 @@ function parseMvcRoles(text) {
 }
 
 /* ------------------------------------------------------------------ */
+/*  FETCH PRODUCERS (from referencesHealth.js URLs)                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Fetch and parse producer references from referencesHealth.js resources.
+ *
+ * @param {Object} resources - Map of { moduleName: url } from page discovery
+ * @returns {Promise<{ok: boolean, producerModules?: string[], producers?: Array, error?: string}>}
+ */
+export async function fetchProducers(resources) {
+  if (!resources || Object.keys(resources).length === 0) {
+    return { ok: true, producerModules: [], producers: [] };
+  }
+
+  const allProducers = [];
+  const entries = Object.entries(resources);
+
+  await Promise.all(entries.map(async ([moduleName, url]) => {
+    try {
+      const response = await fetch(url, { credentials: "include" });
+      if (!response.ok) return;
+      const content = await response.text();
+
+      const definePattern = /define\s*\(\s*["']([^"']+\.referencesHealth\$([^"']+))["']\s*,\s*\[[^\]]*\]\s*,\s*function\s*\([^)]*\)\s*\{([^}]*)\}/g;
+      let match;
+
+      while ((match = definePattern.exec(content)) !== null) {
+        const producerName = match[2];
+        const functionBody = match[3];
+
+        let status = "Unknown";
+        const statusMatch = functionBody.match(/\/\/\s*Reference to producer ['"]([^'"]+)['"] is (\w+)\./);
+        if (statusMatch) {
+          status = statusMatch[2];
+        }
+
+        allProducers.push({
+          module: moduleName,
+          producer: producerName,
+          status: status,
+        });
+      }
+    } catch (err) {
+      // Skip failed fetches — partial results are fine
+    }
+  }));
+
+  const producerModules = [...new Set(allProducers.map(p => p.module))].sort();
+  allProducers.sort((a, b) =>
+    a.module === b.module
+      ? a.producer.localeCompare(b.producer)
+      : a.module.localeCompare(b.module)
+  );
+
+  return { ok: true, producerModules, producers: allProducers };
+}
+
+/* ------------------------------------------------------------------ */
 /*  FETCH SCREENS (via moduleinfo)                                     */
 /* ------------------------------------------------------------------ */
 export async function fetchScreens(pageUrl) {
