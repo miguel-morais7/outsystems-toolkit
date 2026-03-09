@@ -248,8 +248,6 @@ async function doScanODC(result) {
   variables.render();
   staticEntities.setData([]);
   hide(staticEntities.sectionEl);
-  dataModels.setData([]);
-  hide(dataModels.sectionEl);
   roles.setData([]);
   hide(roles.sectionEl);
   producers.setData([], []);
@@ -274,10 +272,11 @@ async function doScanODC(result) {
   );
   screens.render();
 
-  // Discover live blocks and roles in parallel
-  const [liveResult, odcRolesResult] = await Promise.all([
+  // Discover live blocks, roles, and data models in parallel
+  const [liveResult, odcRolesResult, dataModelsResult] = await Promise.all([
     sendMessage({ action: "DISCOVER_BLOCKS" }).catch(() => null),
     sendMessage({ action: "ODC_SCAN_ROLES" }).catch(() => null),
+    sendMessage({ action: "ODC_SCAN_DATA_MODELS", moduleName }).catch(() => null),
   ]);
   const liveBlocks = (liveResult?.ok && liveResult.blocks) ? liveResult.blocks : [];
 
@@ -302,6 +301,17 @@ async function doScanODC(result) {
   } else {
     blocks.setData([], "", "", [], "odc");
     hide(blocks.sectionEl);
+  }
+
+  // Entities & Structures — discovered from ODC chunk exports
+  if (dataModelsResult?.ok && dataModelsResult.dataModels?.length > 0) {
+    dataModels.setData(dataModelsResult.dataModels);
+    dataModels.populateModuleFilter();
+    dataModels.render();
+  } else {
+    dataModels.setData([]);
+    dataModels.populateModuleFilter();
+    hide(dataModels.sectionEl);
   }
 
   // Roles — discovered from ODC chunk exports
@@ -353,17 +363,17 @@ function buildStatusMessage(isODC) {
     const rolesText = rolesState.count === 1 ? "role" : "roles";
     parts.push(`${rolesState.count} ${rolesText}`);
   }
+  const dmState = dataModels.getState();
+  if (dmState.count > 0) {
+    const dmText = dmState.count === 1 ? "entity/structure" : "entities/structures";
+    parts.push(`${dmState.count} ${dmText}`);
+  }
   if (!isODC) {
     const seState = staticEntities.getState();
-    const dmState = dataModels.getState();
     const prodState = producers.getState();
     if (seState.count > 0) {
       const seText = seState.count === 1 ? "static entity" : "static entities";
       parts.push(`${seState.count} ${seText}`);
-    }
-    if (dmState.count > 0) {
-      const dmText = dmState.count === 1 ? "entity/structure" : "entities/structures";
-      parts.push(`${dmState.count} ${dmText}`);
     }
     if (prodState.count > 0) {
       const prodText = prodState.count === 1 ? "producer" : "producers";

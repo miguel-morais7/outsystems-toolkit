@@ -112,6 +112,7 @@ async function doInjection(tabId) {
         "pageScript/roles.js",
         "pageScript/producers.js",
         "pageScript/appDefinition.js",
+        "pageScript/dataModels.js",
       ],
     });
   }
@@ -212,6 +213,7 @@ const PAGE_ACTIONS = {
   RESTORE_BUILTIN_FUNCTIONS: { func: (n) => _osBuiltinFunctionRestore(n),                                           args: msg => [msg.name] },
   DISCOVER_PRODUCER_RESOURCES:{ func: () => _osProducerResourceUrls(),                                                args: () => [] },
   SCAN_APP_DEFINITION:       { func: () => _osAppDefinitionScan(),                                                   args: () => [] },
+  ODC_SCAN_DATA_MODELS:      { func: (mod) => _osOdcDataModelsScan(mod),                                              args: msg => [msg.moduleName] },
 };
 
 /**

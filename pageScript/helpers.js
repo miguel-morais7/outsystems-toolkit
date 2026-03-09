@@ -72,7 +72,7 @@ var _DATA_TYPE_NAMES_ODC = Object.assign({}, _DATA_TYPE_NAMES, {
 });
 
 function _getDataTypeName(enumValue) {
-  var map = window.__osRuntime ? _DATA_TYPE_NAMES_ODC : _DATA_TYPE_NAMES;
+  var map = window.__osODC_Ctors ? _DATA_TYPE_NAMES_ODC : _DATA_TYPE_NAMES;
   return map[enumValue];
 }
 
