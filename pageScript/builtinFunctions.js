@@ -11,6 +11,8 @@
 /* ------------------------------------------------------------------ */
 /*  Originals backup map                                               */
 /* ------------------------------------------------------------------ */
+// Shared between Reactive and ODC — platform dispatch in background.js
+// ensures only one platform's functions are active at a time.
 window.__osBuiltinOriginals = window.__osBuiltinOriginals || {};
 
 /* ------------------------------------------------------------------ */
@@ -34,17 +36,9 @@ var _builtinFuncMeta = [
   { key: "getBookmarkableURL",  type: "text",     displayName: "GetBookmarkableURL" },
 ];
 
-var _builtinFuncMetaOdc = [
-  { key: "currDate",            type: "date",     displayName: "CurrDate" },
-  { key: "currDateTime",        type: "datetime", displayName: "CurrDateTime" },
-  { key: "currTime",            type: "time",     displayName: "CurrTime" },
-  { key: "getUserId",           type: "text",     displayName: "GetUserId" },
-  { key: "getCurrentLocale",    type: "text",     displayName: "GetCurrentLocale" },
-  { key: "getUserAgent",        type: "text",     displayName: "GetUserAgent" },
-  { key: "getAppName",          type: "text",     displayName: "GetAppName" },
-  { key: "getOwnerURLPath",     type: "text",     displayName: "GetOwnerURLPath" },
-  { key: "getBookmarkableURL",  type: "text",     displayName: "GetBookmarkableURL" },
-];
+var _builtinFuncMetaOdc = _builtinFuncMeta
+  .filter(function (m) { return m.key !== "getEntryEspaceName"; })
+  .concat([{ key: "getAppName", type: "text", displayName: "GetAppName" }]);
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -330,6 +324,9 @@ function _osOdcDatePatchApply() {
   var OrigDate = window.__osOrigDate || window.Date;
   if (!window.__osOrigDate) window.__osOrigDate = OrigDate;
 
+  // Note: zero-arg `new PatchedDate()` returns an OrigDate instance (not a
+  // PatchedDate instance) so `instanceof PatchedDate` is false.  This is fine
+  // because the OS runtime only uses Date methods, never instanceof checks.
   function PatchedDate() {
     if (arguments.length === 0) {
       var d = new OrigDate();
@@ -370,13 +367,18 @@ function _osOdcDatePatchRemove() {
 function _osOdcDateOverrideSet(converted, type) {
   if (!window.__osOdcDateOverrides) window.__osOdcDateOverrides = {};
   var ov = window.__osOdcDateOverrides;
-  if (type === "date") {
-    ov.year = converted.year; ov.month = converted.month; ov.day = converted.day;
-  } else if (type === "time") {
-    ov.hours = converted.hours; ov.minutes = converted.minutes; ov.seconds = converted.seconds;
-  } else if (type === "datetime") {
-    ov.year = converted.year; ov.month = converted.month; ov.day = converted.day;
-    ov.hours = converted.hours; ov.minutes = converted.minutes; ov.seconds = converted.seconds;
+  // converted may be an OS DateTime wrapper (.year/.month/.day/.hours/…)
+  // or a plain JS Date (when _getDateTimeClass() returned null).
+  var isNative = converted instanceof Date;
+  if (type === "date" || type === "datetime") {
+    ov.year  = isNative ? converted.getFullYear()  : converted.year;
+    ov.month = isNative ? converted.getMonth() + 1 : converted.month;
+    ov.day   = isNative ? converted.getDate()      : converted.day;
+  }
+  if (type === "time" || type === "datetime") {
+    ov.hours   = isNative ? converted.getHours()   : converted.hours;
+    ov.minutes = isNative ? converted.getMinutes() : converted.minutes;
+    ov.seconds = isNative ? converted.getSeconds() : converted.seconds;
   }
 }
 
