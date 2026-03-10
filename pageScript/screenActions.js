@@ -60,7 +60,7 @@ function _osScreenActionsGet(viewIndex) {
 
       // Parse function signature to get param names (excluding callContext)
       var src = fn.toString();
-      var sigMatch = src.match(/^function\s*\(([^)]*)\)/);
+      var sigMatch = src.match(/\(([^)]*)\)/);
       var allParams = sigMatch ? sigMatch[1].split(",").map(function(p) { return p.trim(); }).filter(Boolean) : [];
       var paramNames = allParams.filter(function(p) { return p !== "callContext"; });
 
@@ -86,7 +86,7 @@ function _osScreenActionsGet(viewIndex) {
       if (typeof internalFn === "function") {
         var internalSrc2 = internalFn.toString();
         for (var pi = 0; pi < paramNames.length; pi++) {
-          var assignRe = new RegExp("vars\\.value\\.(\\w+)\\s*=\\s*" + paramNames[pi] + "(?:\\.|;|\\s|\\))");
+          var assignRe = new RegExp("\\w+\\.value\\.(\\w+)\\s*=\\s*" + paramNames[pi] + "(?:[.;,\\s)]|$)");
           var assignMatch = assignRe.exec(internalSrc2);
           if (assignMatch) {
             inputAttrNames.add(assignMatch[1]);
@@ -123,8 +123,9 @@ function _osScreenActionsGet(viewIndex) {
         } catch (_) { /* fall through to simple param names */ }
       }
 
-      // Fallback: use param names without type info (all go to inputs)
-      if (inputs.length === 0 && paramNames.length > 0) {
+      // Fallback: use param names without type info (all go to inputs).
+      // Only when varGroupKey exists — without it, the params are likely event args, not real inputs.
+      if (inputs.length === 0 && paramNames.length > 0 && varGroupKey) {
         for (var p = 0; p < paramNames.length; p++) {
           inputs.push({
             name: paramNames[p],

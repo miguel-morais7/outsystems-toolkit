@@ -56,7 +56,7 @@ function _osServerActionsGet(viewIndex) {
 
       // Parse inputs from ServerDataConverter.to(paramVar, OS.DataTypes.DataTypes.TYPE)
       var inputs = [];
-      var inputPattern = /(\w+)\s*:\s*OS\.DataConversion\.ServerDataConverter\.to\s*\(\s*(\w+)\s*,\s*OS\.DataTypes\.DataTypes\.(\w+)\s*\)/g;
+      var inputPattern = /(\w+)\s*:\s*\w+\.ServerDataConverter\.to\s*\(\s*(\w+)\s*,\s*\w+\.DataTypes\.(\w+)\s*\)/g;
       var inputMatch;
       while ((inputMatch = inputPattern.exec(src)) !== null) {
         inputs.push({
@@ -68,7 +68,7 @@ function _osServerActionsGet(viewIndex) {
 
       // Fallback: parse function signature if no ServerDataConverter patterns found
       if (inputs.length === 0) {
-        var sigMatch = src.match(/^function\s*\(([^)]*)\)/);
+        var sigMatch = src.match(/\(([^)]*)\)/);
         var allParams = sigMatch ? sigMatch[1].split(",").map(function(p) { return p.trim(); }).filter(Boolean) : [];
         var paramNames = allParams.filter(function(p) { return p !== "callContext"; });
         for (var p = 0; p < paramNames.length; p++) {

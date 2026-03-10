@@ -351,7 +351,7 @@ function _initServerActionInputParam(ctrl, viewInstance, methodName, attrName, m
   var src = fn.toString();
 
   // Find param index from function signature
-  var sigMatch = src.match(/^function\s*\(([^)]*)\)/);
+  var sigMatch = src.match(/\(([^)]*)\)/);
   if (!sigMatch) {
     return { ok: false, error: "Cannot parse server action signature." };
   }
@@ -380,8 +380,12 @@ function _initServerActionInputParam(ctrl, viewInstance, methodName, attrName, m
     if (typeof actionFn !== "function") continue;
 
     var actionSrc = actionFn.toString();
-    var callRe = new RegExp("controller\\." + escapedMethod + "\\s*\\(");
+    var callRe = new RegExp("\\w+\\." + escapedMethod + "\\s*\\(");
     if (!callRe.test(actionSrc)) continue;
+
+    // Detect minified model variable name (e.g. "var n=this.model" → "n")
+    var modelAliasMatch = actionSrc.match(/\b(\w+)\s*=\s*this\.model\b/);
+    var modelAlias = modelAliasMatch ? modelAliasMatch[1] : null;
 
     // Extract the full call arguments
     var callIdx = actionSrc.search(callRe);
@@ -415,6 +419,11 @@ function _initServerActionInputParam(ctrl, viewInstance, methodName, attrName, m
 
     if (paramIndex >= args.length) continue;
     var argExpr = args[paramIndex];
+
+    // Normalize minified model alias to "model" for expression evaluation
+    if (modelAlias && argExpr.startsWith(modelAlias + ".")) {
+      argExpr = "model" + argExpr.substring(modelAlias.length);
+    }
 
     // Try to evaluate the argument expression against the live model
     sourceValue = _evaluateModelExpression(model, argExpr);

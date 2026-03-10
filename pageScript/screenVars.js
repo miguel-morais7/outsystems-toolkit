@@ -36,14 +36,25 @@ function _osScreenVarsGet(varDefs, viewIndex) {
       try {
         var varRecordCtor = model.constructor.getVariablesRecordConstructor();
         if (varRecordCtor && Array.isArray(varRecordCtor.Attributes)) {
-          varDefs = varRecordCtor.Attributes.map(function(attr) {
-            return {
-              name: attr.name || attr.attrName,
-              internalName: attr.attrName,
-              type: _getDataTypeName(attr.dataType) || "Text",
-              isInput: false,
-            };
-          });
+          varDefs = varRecordCtor.Attributes
+            .filter(function(attr) {
+              // Exclude aggregate outputs, data action outputs, and
+              // internal variables (e.g. _employeeIdInDataFetchStatus)
+              var attrName = attr.attrName || "";
+              var displayName = attr.name || attrName;
+              if (attrName.indexOf("Aggr") !== -1) return false;
+              if (attrName.indexOf("DataAct") !== -1) return false;
+              if (displayName.charAt(0) === "_") return false;
+              return true;
+            })
+            .map(function(attr) {
+              return {
+                name: attr.name || attr.attrName,
+                internalName: attr.attrName,
+                type: _getDataTypeName(attr.dataType) || "Text",
+                isInput: false,
+              };
+            });
         }
       } catch (_) {}
     }
