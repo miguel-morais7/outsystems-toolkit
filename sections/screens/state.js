@@ -20,6 +20,8 @@ export const state = {
   expandedAggregates: {},   // refreshMethodName -> true/false
   expandedServerActions: {},  // methodName -> true/false
   collapsedSubSections: {},  // "screenUrl::sectionKey" -> true
+  currentScreenOnly: false,
+  selectedRoles: [],         // array of selected role names
 };
 
 /* DOM references */
@@ -27,6 +29,16 @@ export const inputSearch = document.getElementById("input-search-screens");
 export const screenList = document.getElementById("screen-list");
 export const screenCount = document.getElementById("screen-count");
 export const emptyState = document.getElementById("empty-state");
+
+/* Filter DOM references */
+export const btnCurrentOnly = document.getElementById("btn-current-screen-only");
+export const roleFilterEl = document.getElementById("role-filter");
+export const btnRoleFilter = document.getElementById("btn-role-filter");
+export const roleFilterLabel = document.getElementById("role-filter-label");
+export const roleFilterPanel = document.getElementById("role-filter-panel");
+export const inputSearchRoles = document.getElementById("input-search-roles");
+export const roleFilterOptions = document.getElementById("role-filter-options");
+export const btnRoleClear = document.getElementById("btn-role-clear");
 
 /** The root section element (exported for the orchestrator). */
 export const sectionEl = document.getElementById("screen-section");

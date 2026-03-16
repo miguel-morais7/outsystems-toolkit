@@ -9,12 +9,17 @@ import { debounce, sendMessage } from '../../utils/helpers.js';
 import { initPopupListeners, openVarPopup, openActionParamPopup, openDataActionOutputPopup } from '../screenVarPopup.js';
 import { doSetVar, commitVarInput, doSetDataActionOutput, commitDataActionOutputInput } from '../shared/editing.js';
 import { invokeScreenAction, refreshDataAction, refreshAggregate, invokeServerAction } from '../shared/actions.js';
-import { state, inputSearch, screenList } from './state.js';
-import { render } from './render.js';
+import {
+  state, inputSearch, screenList,
+  btnCurrentOnly, roleFilterEl, btnRoleFilter, roleFilterPanel,
+  inputSearchRoles, roleFilterOptions, btnRoleClear
+} from './state.js';
+import { render, populateRoleFilter, updateRoleFilterLabel } from './render.js';
 import { toggleScreenExpand } from './data.js';
 
 export { sectionEl, setData, getState } from './state.js';
 export { render } from './render.js';
+export { populateRoleFilter } from './render.js';
 
 /** Update the cached variable value in the screen's details. */
 function updateCachedVarValue(internalName, newValue) {
@@ -71,6 +76,66 @@ function updateCachedServerAction(methodName, outputs) {
 /** Wire up event listeners. Call once at startup. */
 export function init() {
   inputSearch.addEventListener("input", debounce(render, 150));
+
+  // Current screen toggle
+  btnCurrentOnly.addEventListener("click", () => {
+    state.currentScreenOnly = !state.currentScreenOnly;
+    btnCurrentOnly.classList.toggle("active", state.currentScreenOnly);
+    render();
+  });
+
+  // Role filter dropdown toggle
+  btnRoleFilter.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const isOpen = !roleFilterPanel.classList.contains("hidden");
+    roleFilterPanel.classList.toggle("hidden", isOpen);
+    btnRoleFilter.classList.toggle("open", !isOpen);
+    if (!isOpen) inputSearchRoles.focus();
+  });
+
+  // Prevent clicks inside panel from closing it
+  roleFilterPanel.addEventListener("click", (e) => e.stopPropagation());
+
+  // Close dropdown on outside click
+  document.addEventListener("click", () => {
+    if (!roleFilterPanel.classList.contains("hidden")) {
+      roleFilterPanel.classList.add("hidden");
+      btnRoleFilter.classList.remove("open");
+    }
+  });
+
+  // Search within role options
+  inputSearchRoles.addEventListener("input", debounce(() => {
+    const q = inputSearchRoles.value.toLowerCase().trim();
+    for (const opt of roleFilterOptions.querySelectorAll(".multi-select-option")) {
+      const match = !q || opt.dataset.role.toLowerCase().includes(q);
+      opt.classList.toggle("hidden-option", !match);
+    }
+  }, 100));
+
+  // Checkbox change (delegated)
+  roleFilterOptions.addEventListener("change", (e) => {
+    const cb = e.target.closest('input[type="checkbox"]');
+    if (!cb) return;
+    const role = cb.value;
+    if (cb.checked) {
+      if (!state.selectedRoles.includes(role)) state.selectedRoles.push(role);
+    } else {
+      state.selectedRoles = state.selectedRoles.filter(r => r !== role);
+    }
+    updateRoleFilterLabel();
+    render();
+  });
+
+  // Clear all roles
+  btnRoleClear.addEventListener("click", () => {
+    state.selectedRoles = [];
+    for (const cb of roleFilterOptions.querySelectorAll('input[type="checkbox"]')) {
+      cb.checked = false;
+    }
+    updateRoleFilterLabel();
+    render();
+  });
 
   screenList.addEventListener("click", (e) => {
     // Inspect popup icon for complex screen variables
