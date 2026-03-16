@@ -193,6 +193,7 @@ const PAGE_ACTIONS = {
   CHECK_USER_ROLES:         { func: (roles) => _osUserRolesCheck(roles),                                            args: msg => [msg.roles] },
   ODC_SCAN_ROLES:            { func: () => _osOdcRolesScan(),                                                        args: () => [] },
   ODC_CHECK_USER_ROLES:      { func: (roles) => _osOdcUserRolesCheck(roles),                                         args: msg => [msg.roles] },
+  ODC_SCAN_SCREEN_ROLES:     { func: () => _osOdcScreenRolesScan(),                                                   args: () => [] },
   GET_SCREEN_ACTIONS:       { func: (vi) => _osScreenActionsGet(vi),                                               args: msg => [msg.viewIndex] },
   INVOKE_SCREEN_ACTION:     { func: (m, p, vi) => _osScreenActionInvoke(m, p, vi),                                 args: msg => [msg.methodName, msg.paramValues || [], msg.viewIndex] },
   INIT_ACTION_PARAM:        { func: (m, a, mx, vi) => _osActionParamInit(m, a, mx, vi),                            args: msg => [msg.methodName, msg.attrName, msg.maxListItems || 50, msg.viewIndex] },
