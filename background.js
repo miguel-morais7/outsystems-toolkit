@@ -242,7 +242,10 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     const prepare = (action === "SCAN" || action === "SET" || action === "GET" ||
       action === "GET_BUILTIN_FUNCTIONS" || action === "OVERRIDE_BUILTIN_FUNCTIONS" || action === "RESTORE_BUILTIN_FUNCTIONS" ||
       action === "SCAN_APP_DEFINITION")
-      ? getActiveTab().then(tab => { message._platform = tabPlatform.get(tab.id) || "unknown"; }).catch(() => { message._platform = "unknown"; })
+      ? getActiveTab().then(async tab => {
+          if (!tabPlatform.has(tab.id)) await detectPlatform(tab.id);
+          message._platform = tabPlatform.get(tab.id) || "unknown";
+        }).catch(() => { message._platform = "unknown"; })
       : Promise.resolve();
 
     prepare.then(() => executeInPage(pageAction.func, pageAction.args(message)))
