@@ -43,7 +43,17 @@ export function buildSubSection(entityKey, key, title, contentHtml, collapsedSub
  */
 export function buildDetails(details, isLive, roles, entityKey, collapsedSubSections, expansionMaps, buildRoleBadges) {
   if (details.notCurrentMessage) {
-    return `<div class="screen-details-info">${esc(details.notCurrentMessage)}</div>`;
+    let notCurrentHtml = "";
+    // Still show roles for non-current screens if available
+    const isInlineRole = roles && roles.length === 1 && (roles[0] === 'Public' || roles[0] === 'Registered');
+    if (roles && roles.length > 0 && !isInlineRole && buildRoleBadges) {
+      notCurrentHtml += buildSubSection(entityKey, "roles", "Roles", {
+        count: roles.length,
+        html: `<div class="screen-detail-item screen-roles-list">${buildRoleBadges(roles)}</div>`
+      }, collapsedSubSections);
+    }
+    notCurrentHtml += `<div class="screen-details-info">${esc(details.notCurrentMessage)}</div>`;
+    return notCurrentHtml;
   }
 
   let html = "";

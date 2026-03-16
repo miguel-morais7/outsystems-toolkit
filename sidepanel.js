@@ -257,13 +257,14 @@ async function doScanODC(result) {
     if (pathParts.length > 1) moduleName = pathParts[pathParts.length - 2];
   } catch (_) {}
 
-  // Discover app definition, live blocks, roles, data models, screen list, and builtin functions in parallel
-  const [appDefResult, liveResult, odcRolesResult, dataModelsResult, screensResult, bfResult] = await Promise.all([
+  // Discover app definition, live blocks, roles, data models, screen list, screen roles, and builtin functions in parallel
+  const [appDefResult, liveResult, odcRolesResult, dataModelsResult, screensResult, screenRolesResult, bfResult] = await Promise.all([
     sendMessage({ action: "SCAN_APP_DEFINITION" }).catch(() => null),
     sendMessage({ action: "DISCOVER_BLOCKS" }).catch(() => null),
     sendMessage({ action: "ODC_SCAN_ROLES" }).catch(() => null),
     sendMessage({ action: "ODC_SCAN_DATA_MODELS", moduleName }).catch(() => null),
     sendMessage({ action: "FETCH_SCREENS" }).catch(() => null),
+    sendMessage({ action: "ODC_SCAN_SCREEN_ROLES" }).catch(() => null),
     builtinFunctions.reapplyOverrides()
       .then(() => sendMessage({ action: "GET_BUILTIN_FUNCTIONS" }))
       .catch(() => null),
@@ -273,32 +274,79 @@ async function doScanODC(result) {
   appmetadata.setData(appDefResult?.appDefinition || null, "odc");
   appmetadata.render();
 
-  // Screen list — use FETCH_SCREENS if available, fall back to synthetic entry
+  // Screen list — use FETCH_SCREENS, bundle route data, or synthetic fallback
+  let screenList;
+  let screenCurrentUrl;
+  let screenBaseUrl = "";
+  let homeScreenName = "";
+
+  // Detect current screen path from URL
+  let currentScreenPath = "";
+  try {
+    const pathParts = new URL(pageUrl).pathname.split("/").filter(Boolean);
+    if (pathParts.length > 1) currentScreenPath = pathParts[pathParts.length - 1];
+  } catch (_) {}
+
   if (screensResult?.ok) {
-    screens.setData(
-      screensResult.screens || [],
-      screensResult.baseUrl || "",
-      screensResult.moduleName || moduleName,
-      screensResult.currentScreen || "",
-      screensResult.homeScreenName || "",
-      "odc"
-    );
+    screenList = screensResult.screens || [];
+    screenCurrentUrl = screensResult.currentScreen || "";
+    screenBaseUrl = screensResult.baseUrl || "";
+    homeScreenName = screensResult.homeScreenName || "";
     if (screensResult.versionInfo) {
       appmetadata.setVersionInfo(screensResult.versionInfo);
       appmetadata.render();
     }
+  } else if (screenRolesResult?.ok && screenRolesResult.screenRoles?.length > 0) {
+    // Build screen list from bundle route data (has screenName, path, roles)
+    const seen = {};
+    screenList = [];
+    for (const sr of screenRolesResult.screenRoles) {
+      const key = sr.screenName + "|" + sr.path;
+      if (seen[key]) continue;
+      seen[key] = true;
+      const nameParts = sr.screenName.split(".");
+      const name = nameParts.length > 1 ? nameParts.slice(1).join(".") : sr.screenName;
+      const flow = nameParts.length > 1 ? nameParts[0] : "";
+      screenList.push({
+        name,
+        screenUrl: sr.path || name,
+        flow,
+        fullName: sr.screenName,
+        roles: sr.roles,
+      });
+    }
+    // Determine which is the default (home) screen — forDefaultPath in the route array
+    const defaultScreen = screenRolesResult.screenRoles.find(sr => sr.path === "");
+    if (defaultScreen) homeScreenName = defaultScreen.screenName;
+    screenCurrentUrl = currentScreenPath || (defaultScreen ? (defaultScreen.path || defaultScreen.screenName.split(".").pop()) : "");
   } else {
-    // Fallback: synthetic single-screen entry from URL
-    let screenName = "Screen";
-    try {
-      const pathParts = new URL(pageUrl).pathname.split("/").filter(Boolean);
-      if (pathParts.length > 0) screenName = pathParts[pathParts.length - 1];
-    } catch (_) {}
-    screens.setData(
-      [{ name: screenName, screenUrl: screenName, flow: "Current", roles: [] }],
-      "", moduleName, screenName, "", "odc"
-    );
+    // Last resort: synthetic single-screen entry from URL
+    let screenName = currentScreenPath || "Screen";
+    screenList = [{ name: screenName, screenUrl: screenName, flow: "Current", roles: [] }];
+    screenCurrentUrl = screenName;
   }
+
+  screens.setData(screenList, screenBaseUrl, moduleName, screenCurrentUrl, homeScreenName, "odc");
+
+  // Merge roles into screens that don't already have them
+  if (screenRolesResult?.ok && screenRolesResult.screenRoles?.length > 0) {
+    const rolesByPath = {};
+    const rolesByFullName = {};
+    for (const sr of screenRolesResult.screenRoles) {
+      rolesByPath[sr.path.toLowerCase()] = sr.roles;
+      rolesByFullName[sr.screenName.toLowerCase()] = sr.roles;
+    }
+    for (const s of screenList) {
+      if (s.roles && s.roles.length > 0) continue;
+      const urlKey = (s.screenUrl || "").toLowerCase();
+      if (urlKey && rolesByPath[urlKey]) { s.roles = rolesByPath[urlKey]; continue; }
+      const fullKey = (s.fullName || "").toLowerCase();
+      if (fullKey && rolesByFullName[fullKey]) { s.roles = rolesByFullName[fullKey]; continue; }
+      const nameKey = (s.name || "").toLowerCase();
+      if (nameKey && rolesByPath[nameKey]) { s.roles = rolesByPath[nameKey]; }
+    }
+  }
+
   screens.render();
   const liveBlocks = (liveResult?.ok && liveResult.blocks) ? liveResult.blocks : [];
 
