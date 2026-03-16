@@ -192,7 +192,7 @@ export async function fetchScreens(pageUrl) {
 
   const moduleName = pathParts[0];
   const moduleInfoUrl = `${url.origin}/${moduleName}/moduleservices/moduleinfo?${Date.now()}`;
-  const currentScreen = pathParts.length > 1 ? pathParts[1] : "";
+  let currentScreen = pathParts.length > 1 ? pathParts[1] : "";
 
   let response;
   try {
@@ -434,6 +434,12 @@ export async function fetchScreens(pageUrl) {
     });
   }
   blocks.sort((a, b) => a.name.localeCompare(b.name));
+
+  // When URL has no screen path (e.g. /MyApp), fall back to the home screen
+  if (!currentScreen && homeScreenName) {
+    const homeScreen = screens.find(s => s.fullName === homeScreenName);
+    if (homeScreen) currentScreen = homeScreen.screenUrl;
+  }
 
   return {
     ok: true,
