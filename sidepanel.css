@@ -34,6 +34,16 @@
   --transition: 150ms ease;
 
   --font-mono: "Cascadia Code", "Fira Code", "JetBrains Mono", "Consolas", monospace;
+
+  /* Z-index scale */
+  --z-base: 1;
+  --z-sticky-child: 2;
+  --z-sticky: 3;
+  --z-toast: 10;
+  --z-dropdown-open: 100;
+  --z-overlay: 1000;
+  --z-tooltip: 2000;
+  --z-popover: 3000;
 }
 
 /* ------------------------------------------------------------------ */
@@ -268,7 +278,7 @@ body {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   position: sticky;
   top: 0;
-  z-index: 3;
+  z-index: var(--z-sticky);
   cursor: pointer;
   user-select: none;
   transition: all 0.2s ease;
@@ -331,7 +341,7 @@ body {
 
 /* Raise the entire section header stacking context when tooltip is active */
 .section-header:has(.info-hint:hover) {
-  z-index: 10;
+  z-index: var(--z-toast);
 }
 
 .info-hint::after {
@@ -356,7 +366,7 @@ body {
   transform: translateY(-4px);
   transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
   pointer-events: none;
-  z-index: 9000;
+  z-index: var(--z-tooltip);
 }
 
 .info-hint:hover::after {
@@ -378,12 +388,12 @@ body {
   border-bottom: 1px solid var(--border);
   position: sticky;
   top: 41px;
-  z-index: 3;
+  z-index: var(--z-sticky);
   overflow: visible;
 }
 
 .producer-search-wrapper:has(.multi-select-panel:not(.hidden)) {
-  z-index: 100;
+  z-index: var(--z-dropdown-open);
 }
 
 .producer-search-wrapper .search-bar {
@@ -457,7 +467,7 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-md);
-  z-index: 9999;
+  z-index: var(--z-popover);
   overflow: hidden;
 }
 
@@ -557,7 +567,7 @@ body {
   border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
-  z-index: 2;
+  z-index: var(--z-sticky-child);
   transition: background var(--transition);
 }
 
@@ -861,7 +871,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  z-index: 1000;
+  z-index: var(--z-overlay);
   pointer-events: none;
 }
 
@@ -1851,7 +1861,7 @@ body {
   position: fixed;
   inset: 0;
   background: rgba(26, 26, 46, 0.5);
-  z-index: 100;
+  z-index: var(--z-overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2145,7 +2155,7 @@ body {
   position: absolute;
   right: 4px;
   top: 4px;
-  z-index: 1;
+  z-index: var(--z-base);
   align-items: center;
   justify-content: center;
   width: 18px;

@@ -18,8 +18,7 @@ import { render, populateRoleFilter, updateRoleFilterLabel } from './render.js';
 import { toggleScreenExpand } from './data.js';
 
 export { sectionEl, setData, getState } from './state.js';
-export { render } from './render.js';
-export { populateRoleFilter } from './render.js';
+export { render, populateRoleFilter } from './render.js';
 
 /** Update the cached variable value in the screen's details. */
 function updateCachedVarValue(internalName, newValue) {
