@@ -143,7 +143,7 @@ body {
   color: var(--text-muted);
 }
 
-.search-bar input {
+.search-bar > input {
   flex: 1;
   border: none;
   background: transparent;
@@ -153,7 +153,7 @@ body {
   min-width: 0;
 }
 
-.search-bar input::placeholder {
+.search-bar > input::placeholder {
   color: var(--text-muted);
 }
 
@@ -390,11 +390,13 @@ body {
   margin: 0;
 }
 
-/* Screen filter row */
-.screen-filter-row {
-  display: flex;
-  gap: 6px;
-  margin-top: 6px;
+/* Filter toggles inside search bar */
+.search-bar .filter-toggle {
+  flex-shrink: 0;
+}
+
+.search-bar .multi-select-dropdown {
+  flex-shrink: 0;
 }
 
 .filter-toggle {
@@ -448,7 +450,7 @@ body {
 .multi-select-panel {
   position: absolute;
   top: calc(100% + 4px);
-  left: 0;
+  right: 0;
   min-width: 200px;
   max-width: 280px;
   background: var(--bg-primary);
