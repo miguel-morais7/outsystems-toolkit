@@ -139,8 +139,10 @@ async function doScanReactive(result) {
       "reactive"
     );
     screens.render();
+    screens.populateRoleFilter();
   } else {
     screens.setData([], "", "", "", "", "reactive");
+    screens.populateRoleFilter();
     hide(screens.sectionEl);
   }
 
@@ -348,6 +350,7 @@ async function doScanODC(result) {
   }
 
   screens.render();
+  screens.populateRoleFilter();
   const liveBlocks = (liveResult?.ok && liveResult.blocks) ? liveResult.blocks : [];
 
   if (liveBlocks.length > 0) {

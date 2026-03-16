@@ -8,7 +8,10 @@
 import { esc, escAttr } from '../../utils/helpers.js';
 import { show, hide } from '../../utils/ui.js';
 import { buildDetails } from '../shared/render.js';
-import { state, inputSearch, screenList, screenCount, emptyState, sectionEl } from './state.js';
+import {
+  state, inputSearch, screenList, screenCount, emptyState, sectionEl,
+  roleFilterEl, btnRoleFilter, roleFilterLabel, roleFilterOptions
+} from './state.js';
 
 /** Render (or re-render) the screens list. */
 export function render() {
@@ -23,6 +26,14 @@ export function render() {
         s.flow.toLowerCase().includes(query) ||
         (s.roles && s.roles.some(r => r.toLowerCase().includes(query)))
     );
+  }
+
+  if (state.currentScreenOnly) {
+    filtered = filtered.filter(s => s.screenUrl === state.currentScreen);
+  }
+
+  if (state.selectedRoles.length > 0) {
+    filtered = filtered.filter(s => s.roles && state.selectedRoles.every(r => s.roles.includes(r)));
   }
 
   screenCount.textContent = filtered.length;
@@ -136,4 +147,46 @@ function buildScreenRow(s) {
   }
 
   return html;
+}
+
+/** Populate the role filter dropdown from current screen data. */
+export function populateRoleFilter() {
+  const roles = new Set();
+  for (const s of state.allScreens) {
+    if (s.roles) s.roles.forEach(r => roles.add(r));
+  }
+
+  const sorted = [...roles].sort();
+
+  if (sorted.length === 0) {
+    roleFilterEl.classList.add("hidden");
+    state.selectedRoles = [];
+    return;
+  }
+
+  roleFilterEl.classList.remove("hidden");
+
+  roleFilterOptions.innerHTML = sorted.map(r =>
+    `<label class="multi-select-option" data-role="${escAttr(r)}">
+      <input type="checkbox" value="${escAttr(r)}" ${state.selectedRoles.includes(r) ? "checked" : ""}/>
+      ${esc(r)}
+    </label>`
+  ).join("");
+
+  updateRoleFilterLabel();
+}
+
+/** Update the role filter button label based on selection. */
+export function updateRoleFilterLabel() {
+  const count = state.selectedRoles.length;
+  if (count === 0) {
+    roleFilterLabel.textContent = "All Roles";
+    btnRoleFilter.classList.remove("active");
+  } else if (count === 1) {
+    roleFilterLabel.textContent = state.selectedRoles[0];
+    btnRoleFilter.classList.add("active");
+  } else {
+    roleFilterLabel.textContent = count + " roles";
+    btnRoleFilter.classList.add("active");
+  }
 }
