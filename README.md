@@ -1,161 +1,104 @@
-# OutSystems Toolkit — Chrome Extension
+# OutSystems Toolkit
 
-A Chrome side panel extension for inspecting and editing **OutSystems** application runtime data. It provides deep visibility into client variables, screen variables, block components, actions, aggregates, static entities, roles, and producer references — all from a convenient side panel.
+A Chrome extension that gives you deep runtime visibility into OutSystems applications. Inspect and edit variables, invoke actions, explore data models, and more — all from a convenient side panel.
+
+Supports both **OutSystems 11 (Reactive)** and **ODC** applications.
+
+<!-- TODO: Add Chrome Web Store badge once published -->
+<!-- [![Chrome Web Store](https://img.shields.io/chrome-web-store/v/EXTENSION_ID)](https://chrome.google.com/webstore/detail/EXTENSION_ID) -->
 
 ## Features
 
 ### App Metadata
-- View application metadata at a glance: app name, environment, debug mode, home module, version info, and more.
+View application info at a glance: app name, environment, debug mode, home module, and version details.
 
 ### Client Variables
-- **Scan & Edit**: Discover and modify client variables across all loaded modules.
-- **Type Support**: Handles Text, Boolean, Integer, Decimal, Currency, Date, Time, DateTime, and LongInteger.
-- **Grouping & Filtering**: Variables grouped by module with search bar and module-filter dropdown.
+Discover and edit client variables across all loaded modules. Supports Text, Boolean, Integer, Decimal, Currency, Date, Time, DateTime, LongInteger, and more. Variables are grouped by module with search and filtering.
 
 ### Screens
-The most comprehensive section — lists all screens grouped by Flow, parsed from `moduleinfo`.
+Lists all screens grouped by UI Flow. Expand any screen to see its full structure:
 
-When expanding a screen:
-- **Static Structure**: Input Parameters, Local Variables, Aggregates, Data Actions, Server Actions, and Screen Actions parsed from `mvc.js`.
-- **Live Runtime Data** (active screen only): Real-time values fetched via React Fiber traversal and the OutSystems immutable Record/List runtime.
-
-For the currently active screen:
-- **Input Parameters & Local Variables** — Inline editing for scalar types; tree-view popup for complex types (Record, RecordList, Object).
-- **Screen Actions** — Discover and invoke client-side actions with full input parameter support (scalar and complex types).
-- **Data Actions** — Trigger refresh and inspect updated output parameters.
-- **Aggregates** — Trigger refresh and inspect updated output.
-- **Server Actions** — Invoke server-side actions with input parameter editing and output parameter inspection.
+- **Input Parameters & Local Variables** — View types and live values; inline edit or open a tree-view popup for complex types (Record, RecordList).
+- **Screen Actions** — Discover and invoke client-side actions with full input parameter support.
+- **Data Actions** — Trigger refresh and inspect output parameters.
+- **Aggregates** — Trigger refresh and inspect results.
+- **Server Actions** — Invoke server-side actions with input/output parameter editing.
 
 ### Blocks
-Inspect and interact with **block component instances** live on the current screen. The extension walks the React Fiber tree to discover all block view instances and exposes the same capabilities available for screens.
-
-- **Block Discovery**: Automatically finds all live block instances rendered on the current page via Fiber tree traversal.
-- **Full Inspection**: Each block expands to show its Local Variables, Screen Actions, Data Actions, Aggregates, and Server Actions — with live runtime values.
-- **Inline Editing**: Edit block variables and invoke block actions, exactly like screen-level ones.
-- **Block Tree Popup**: Visualize the full React component hierarchy (screen root → nested blocks) with the selected block highlighted and its ancestor path expanded.
+Inspect live block component instances on the current screen. The extension walks the React Fiber tree to find all rendered blocks and exposes the same capabilities as screens — variables, actions, aggregates, and more. A **Block Tree** popup visualizes the full component hierarchy.
 
 ### Static Entities
-- Entities grouped by module, showing attribute schemas and all records with display names.
-- One-click GUID copy for both entities and individual records.
-- Searchable by module, entity name, record name, or GUID.
+Browse entities grouped by module with attribute schemas and all records. *(Reactive only)*
+
+### Data Models
+Explore entity and structure Record definitions grouped by defining module. Each item expands to show its attributes. Filterable by module and kind (Entity vs Structure).
 
 ### Roles
-- Lists all security roles defined in the application.
-- Badges roles that the current logged-in user has.
-- Searchable by role name.
+Lists all security roles defined in the application, with badges showing which roles the current user has.
+
+### Built-in Function Overrides
+Inspect and temporarily override OutSystems built-in functions (like `CurrDateTime`, `GetUserId`, etc.) with hardcoded values — useful for testing time-sensitive logic or impersonation scenarios. Overrides survive rescans.
 
 ### Producer References
-- Lists producer references grouped by consumer module.
-- Health status indicators: "OK" (green) or broken (red).
-- Search bar and module-filter dropdown.
+View producer references grouped by consumer module with health status indicators. *(Reactive only)*
 
-### UX
-- **Auto-Rescan**: Automatically updates when you navigate or refresh the page.
-- **Sticky Headers**: Search bars and section headers remain visible while scrolling.
-- **Collapsible Sections**: Every section and sub-group can be collapsed.
-- **Toast Notifications**: Non-blocking feedback on every save or action trigger.
-- **Row Flash**: Visual confirmation (green/red) on edits.
+### Quality of Life
+- **Auto-Rescan** — Automatically refreshes when you navigate or reload the page.
+- **Sticky Headers** — Search bars and section headers stay visible while scrolling.
+- **Collapsible Sections** — Every section and sub-group can be collapsed.
+- **Toast Notifications** — Non-blocking feedback on every action.
 
 ## Installation
+
+### From the Chrome Web Store
+
+<!-- TODO: Add direct link once published -->
+1. Visit the [OutSystems Toolkit]() page on the Chrome Web Store.
+2. Click **Add to Chrome**.
+
+### From Source (Developer Mode)
 
 1. Clone or download this repository.
 2. Open `chrome://extensions` in Chrome (or any Chromium-based browser).
 3. Enable **Developer mode** (toggle in the top-right corner).
 4. Click **Load unpacked** and select the repository folder.
-5. The extension icon will appear in the toolbar. Click it to open the side panel.
+5. The extension icon will appear in the toolbar.
 
 ## Usage
 
-1. Navigate to an OutSystems application in your browser.
+1. Navigate to any OutSystems application.
 2. Click the **OutSystems Toolkit** icon in the toolbar to open the side panel.
-3. Click **Scan** to discover all runtime data on the current page.
-4. Use search bars and module filters to locate specific items.
-5. Click a variable value to edit it inline; use the tree-view popup for complex types.
-6. Invoke screen actions, server actions, refresh data actions and aggregates directly from the panel.
-7. Click a screen name to navigate to that screen.
-8. Expand blocks in the **Blocks** section to inspect and edit block-level variables and actions. Use the tree button to visualize the component hierarchy.
-
-## Project Structure
-
-```
-├── manifest.json              # MV3 extension manifest
-├── background.js              # Service worker — message dispatch & script injection
-├── background/
-│   └── parsers.js             # Fetch + parse logic (moduleinfo, mvc.js, controller.js)
-├── sidepanel.html             # Side panel UI layout
-├── sidepanel.js               # Orchestrator — manages sections & messaging
-├── sidepanel.css              # Styles (CSS custom properties for theming)
-├── pageScript/                # Injected into page MAIN world (globals, not ES modules)
-│   ├── helpers.js             # Shared utilities (type detection, coercion, list/record APIs)
-│   ├── fiber.js               # React Fiber traversal (screen model, block discovery, tree)
-│   ├── clientVars.js          # Client variable CRUD & user role checking
-│   ├── screenVars.js          # Screen variable read/write/introspect, deep-set, list ops
-│   ├── screenActions.js       # Screen action discovery and invocation
-│   ├── actionParams.js        # Action parameter storage, deep editing, list ops
-│   ├── dataActions.js         # Data action discovery and refresh
-│   ├── aggregates.js          # Aggregate discovery and refresh
-│   └── serverActions.js       # Server action discovery and invocation
-├── sections/                  # Modular UI feature sections
-│   ├── appmetadata.js         # App Metadata (read-only key-value display)
-│   ├── variables.js           # Client Variables (scan, filter, inline edit)
-│   ├── screens/               # Screens section
-│   │   ├── index.js           # Entry point, delegated events, public API
-│   │   ├── state.js           # Shared mutable state & DOM references
-│   │   ├── render.js          # HTML rendering for screen list & details
-│   │   └── data.js            # Screen expansion & enrichment orchestration
-│   ├── blocks/                # Blocks section (block component inspection)
-│   │   ├── index.js           # Entry point, delegated events, public API
-│   │   ├── state.js           # Shared mutable state & DOM references
-│   │   ├── render.js          # HTML rendering for block list & details
-│   │   └── data.js            # Block expansion & enrichment orchestration
-│   ├── shared/                # Shared modules used by both Screens and Blocks
-│   │   ├── enrichment.js      # Live value fetch & action enrichment
-│   │   ├── editing.js         # Inline variable editing handlers
-│   │   ├── actions.js         # Action invocation (screen, server, data, aggregate)
-│   │   ├── builders.js        # HTML builders for variable rows & action cards
-│   │   └── render.js          # Sub-section & detail panel builders
-│   ├── screenVarPopup.js      # Shared popup for complex type tree-view inspect/edit
-│   ├── blockTreePopup.js      # Block component hierarchy tree popup
-│   ├── staticEntities.js      # Static Entities (grouped, searchable, GUID copy)
-│   ├── roles.js               # Roles (discovery + current-user check)
-│   └── producers.js           # Producer References (health status)
-├── utils/
-│   ├── helpers.js             # Pure functions (escape, debounce, messaging)
-│   ├── ui.js                  # DOM helpers (visibility, toasts, flash, status)
-│   └── typeControls.js        # Type-aware input widget factory
-└── icons/                     # Extension icons (16, 32, 48, 128)
-```
-
-## How It Works
-
-1. **Service Worker** (`background.js`) receives messages from the side panel via two dispatch tables: `PAGE_ACTIONS` (execute functions in the page's MAIN world) and `SPECIAL_ACTIONS` (handle fetch + parse operations in the service worker itself).
-2. **Page Scripts** (`pageScript/*.js`) are injected into the page's MAIN world in dependency order. They leverage the OutSystems AMD `require()` loader to access runtime modules and traverse the React Fiber tree to find the active screen's model and variables. An optional `viewIndex` parameter allows targeting specific block instances instead of the screen root.
-3. **Side Panel** (`sidepanel.js`) orchestrates section modules, each with a consistent `init()`/`setData()`/`getState()`/`render()` interface. Auto-scans on panel open and re-scans on tab navigation.
-
-### Section Module Interface
-
-Each section (`sections/*.js`) exports:
-- `init()` — Initialize DOM references and event listeners
-- `setData(data)` — Receive and store data from scans
-- `getState()` — Return current filter/search state
-- `render()` — Update the UI based on current state
-- `sectionEl` — DOM root element reference
+3. The extension auto-scans on open. Use the **Scan** button to manually refresh.
+4. Search and filter to locate specific items.
+5. Click variable values to edit inline, or use the tree-view popup for complex types.
+6. Invoke actions, refresh aggregates and data actions directly from the panel.
+7. Click a screen name to navigate to it. Expand blocks to inspect their internals.
 
 ## Permissions
 
-| Permission | Reason |
+| Permission | Why |
 |---|---|
-| `activeTab` | Access the currently active tab for script injection |
-| `scripting` | Inject page scripts into the page's MAIN world |
-| `sidePanel` | Render the extension UI as a Chrome side panel |
-| `tabs` | Listen for tab navigation events to trigger auto-rescan |
-| `host_permissions (http/https)` | Allow script injection on any HTTP/HTTPS page |
+| `activeTab` | Access the current tab for script injection |
+| `scripting` | Inject page scripts to read OutSystems runtime data |
+| `sidePanel` | Render the UI as a Chrome side panel |
+| `tabs` | Detect tab navigation for auto-rescan |
+| Host permissions (`http/https`) | Allow script injection on any page |
 
 ## Requirements
 
 - Chrome 116+ (or any Chromium-based browser with Side Panel API support)
 - The target page must be an OutSystems application (Reactive or ODC)
 
+## Privacy
+
+This extension runs entirely locally. It does **not** collect, transmit, or store any user data. All inspection and editing happens in your browser — no external servers are contacted.
+
+## Contributing
+
+Contributions are welcome! This is a zero-dependency, no-build-step project — vanilla JavaScript (ES6 modules) running natively in Chrome. Load the extension in developer mode and you're ready to go.
+
+See [`CLAUDE.md`](CLAUDE.md) for detailed architecture documentation.
+
 ## License
 
-This project is provided as-is for internal/development use.
+[MIT](LICENSE) — Miguel Morais
