@@ -2,11 +2,10 @@
  * sections/staticEntities.js — Static Entities section
  *
  * Displays static entities from moduleinfo, grouped by module.
- * Each entity shows its records with copyable GUIDs.
  */
 
 import { esc, escAttr, debounce } from '../utils/helpers.js';
-import { show, hide, toast } from '../utils/ui.js';
+import { show, hide } from '../utils/ui.js';
 
 /* ================================================================== */
 /*  State                                                              */
@@ -59,14 +58,6 @@ export function init() {
       return;
     }
 
-    // Copy GUID to clipboard
-    const copyBtn = e.target.closest(".btn-copy-guid");
-    if (copyBtn) {
-      e.stopPropagation();
-      navigator.clipboard.writeText(copyBtn.dataset.guid).then(() => {
-        toast("GUID copied", "success");
-      });
-    }
   });
 }
 
@@ -105,11 +96,9 @@ export function render() {
   if (query) {
     filtered = filtered.filter(e =>
       e.module.toLowerCase().includes(query) ||
-      e.entityGuid.toLowerCase().includes(query) ||
       (e.entityName && e.entityName.toLowerCase().includes(query)) ||
       e.records.some(r =>
         r.name.toLowerCase().includes(query) ||
-        r.guid.toLowerCase().includes(query) ||
         (r.recordName && r.recordName.toLowerCase().includes(query))
       )
     );
@@ -163,8 +152,6 @@ export function render() {
 /*  Private helpers                                                    */
 /* ================================================================== */
 
-const COPY_SVG = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
-
 function buildEntityGroup(entity, index) {
   const isCollapsed = !!collapsedEntities[entity.entityGuid];
   const displayName = entity.entityName || `Entity ${index}`;
@@ -180,7 +167,6 @@ function buildEntityGroup(entity, index) {
     : "";
   html += `<span class="entity-attrs-hint"${attrSummary ? ` title="${escAttr(attrSummary)}"` : ''}>${esc(attrSummary)}</span>`;
   html += `<span class="count-badge">${entity.records.length}</span>`;
-  html += `<button class="btn-icon btn-copy-guid" data-guid="${escAttr(entity.entityGuid)}" title="Copy entity GUID">${COPY_SVG}</button>`;
   html += `</div>`;
 
   // Entity body (record list)
@@ -201,9 +187,6 @@ function buildRecordRow(record) {
       <div class="var-info">
         <span class="var-name">${esc(label)}</span>
         ${showId ? `<span class="record-id">${esc(record.name)}</span>` : ''}
-      </div>
-      <div class="var-value-wrap">
-        <button class="btn-icon btn-copy-guid" data-guid="${escAttr(record.guid)}" title="Copy record GUID">${COPY_SVG}</button>
       </div>
     </div>`;
 }

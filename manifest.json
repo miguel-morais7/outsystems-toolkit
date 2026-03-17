@@ -2,7 +2,8 @@
   "manifest_version": 3,
   "name": "OutSystems Toolkit",
   "version": "1.0.0",
-  "description": "View and edit OutSystems app client variables, list producer references, and navigate screens across all modules in a convenient side panel.",
+  "description": "Inspect and edit OutSystems Reactive and ODC app runtime data — variables, actions, aggregates, roles, data models, and more.",
+  "homepage_url": "https://github.com/miguel-morais7/outsystems-toolkit",
   "permissions": [
     "activeTab",
     "scripting",

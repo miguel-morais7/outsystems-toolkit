@@ -1700,22 +1700,6 @@ body {
   padding-left: 48px;
 }
 
-.static-entity-record-row .btn-copy-guid,
-.entity-header .btn-copy-guid {
-  opacity: 0;
-  transition: opacity var(--transition);
-}
-
-.static-entity-record-row:hover .btn-copy-guid,
-.entity-header:hover .btn-copy-guid {
-  opacity: 0.6;
-}
-
-.static-entity-record-row .btn-copy-guid:hover,
-.entity-header .btn-copy-guid:hover {
-  opacity: 1;
-  color: var(--color-red);
-}
 
 /* ------------------------------------------------------------------ */
 /*  ENTITIES & STRUCTURES SECTION                                      */
