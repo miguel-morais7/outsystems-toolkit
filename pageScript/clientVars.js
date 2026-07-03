@@ -91,15 +91,17 @@ function _osClientVarsScan() {
               let value;
               let valueType = "Text"; // default
               try {
-                // Detect exact Date/Time/DateTime type from getter source code
+                // Detect exact Date/Time/DateTime type from getter source code.
+                // "Types.X" matches both codegen styles: OS.DataTypes.DataTypes.X
+                // (older platforms) and OS.Types.X (newer platforms).
                 try {
                   const getterSrc = mod[key].toString();
-                  if (getterSrc.includes("DataTypes.DateTime")) valueType = "Date Time";
-                  else if (getterSrc.includes("DataTypes.Date")) valueType = "Date";
-                  else if (getterSrc.includes("DataTypes.Time")) valueType = "Time";
-                  else if (getterSrc.includes("DataTypes.Currency")) valueType = "Currency";
-                  else if (getterSrc.includes("DataTypes.LongInteger")) valueType = "Long Integer";
-                  else if (getterSrc.includes("DataTypes.Decimal")) valueType = "Decimal";
+                  if (getterSrc.includes("Types.DateTime")) valueType = "Date Time";
+                  else if (getterSrc.includes("Types.Date")) valueType = "Date";
+                  else if (getterSrc.includes("Types.Time")) valueType = "Time";
+                  else if (getterSrc.includes("Types.Currency")) valueType = "Currency";
+                  else if (getterSrc.includes("Types.LongInteger")) valueType = "Long Integer";
+                  else if (getterSrc.includes("Types.Decimal")) valueType = "Decimal";
                 } catch (srcErr) { /* source inspection failed, will detect from value */ }
 
                 value = mod[key]();
@@ -243,7 +245,7 @@ function _osOdcClientVarsScan() {
             var typeName = "Text";
             try {
               var src = proto[methodName].toString();
-              var match = src.match(/getVariable\("([^"]+)","([^"]+)",\w+\.DataTypes\.(\w+)\)/);
+              var match = src.match(/getVariable\(\s*"([^"]+)"\s*,\s*"([^"]+)"\s*,\s*[\w.$]+\.(?:DataTypes|Types)\.(\w+)\s*\)/);
               if (match) {
                 varName = match[1];
                 moduleName = match[2];

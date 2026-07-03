@@ -57,7 +57,7 @@ function parseModelJsStaticEntities(text) {
     const recBaseName = m[1];
     const attrsBody = m[2];
     const attrs = [];
-    const attrPattern = /this\.attr\s*\(\s*"([^"]+)"\s*,\s*"[^"]+"\s*,\s*"[^"]*"\s*,[^,]*,[^,]*,\s*OS\.DataTypes\.DataTypes\.(\w+)/g;
+    const attrPattern = /this\.attr\s*\(\s*"([^"]+)"\s*,\s*"[^"]+"\s*,\s*"[^"]*"\s*,[^,]*,[^,]*,\s*OS\.(?:DataTypes\.DataTypes|Types)\.(\w+)/g;
     let am;
     while ((am = attrPattern.exec(attrsBody)) !== null) {
       attrs.push({ name: am[1], type: am[2] });
@@ -581,7 +581,7 @@ export async function fetchScreenDetails(baseUrl, moduleName, flow, screenName, 
   // ----------------------------------------------------------------
   const varsRecordMatch = scriptText.match(/VariablesRecord\.attributesToDeclare\s*=\s*function\s*\(\)\s*\{([\s\S]*?)\]\.concat/);
   const varsRecordBody = varsRecordMatch ? varsRecordMatch[1] : scriptText;
-  const varPattern = /this\.attr\s*\(\s*"([^"]+)"\s*,\s*"([^"]+)"\s*,\s*"[^"]*"\s*,\s*(?:true|false)\s*,\s*(?:true|false)\s*,\s*OS\.DataTypes\.DataTypes\.(\w+)/g;
+  const varPattern = /this\.attr\s*\(\s*"([^"]+)"\s*,\s*"([^"]+)"\s*,\s*"[^"]*"\s*,\s*(?:true|false)\s*,\s*(?:true|false)\s*,\s*OS\.(?:DataTypes\.DataTypes|Types)\.(\w+)/g;
   let match;
   const seenVars = new Set();
   while ((match = varPattern.exec(varsRecordBody)) !== null) {
@@ -646,7 +646,7 @@ export async function fetchScreenDetails(baseUrl, moduleName, flow, screenName, 
     da.outputs = [];
     if (recMatch) {
       const attrsStr = recMatch[1];
-      const attrPattern = /this\.attr\s*\(\s*"([^"]+)"\s*,\s*"([^"]+)"\s*,\s*"[^"]*"\s*,\s*(?:true|false)\s*,\s*(?:true|false)\s*,\s*OS\.DataTypes\.DataTypes\.(\w+)/g;
+      const attrPattern = /this\.attr\s*\(\s*"([^"]+)"\s*,\s*"([^"]+)"\s*,\s*"[^"]*"\s*,\s*(?:true|false)\s*,\s*(?:true|false)\s*,\s*OS\.(?:DataTypes\.DataTypes|Types)\.(\w+)/g;
       let attrMatch;
       while ((attrMatch = attrPattern.exec(attrsStr)) !== null) {
         const rawType = attrMatch[3];
@@ -679,7 +679,7 @@ export async function fetchScreenDetails(baseUrl, moduleName, flow, screenName, 
     aggr.outputs = [];
     if (recMatch) {
       const attrsStr = recMatch[1];
-      const attrPattern = /this\.attr\s*\(\s*"([^"]+)"\s*,\s*"([^"]+)"\s*,\s*"[^"]*"\s*,\s*(?:true|false)\s*,\s*(?:true|false)\s*,\s*OS\.DataTypes\.DataTypes\.(\w+)/g;
+      const attrPattern = /this\.attr\s*\(\s*"([^"]+)"\s*,\s*"([^"]+)"\s*,\s*"[^"]*"\s*,\s*(?:true|false)\s*,\s*(?:true|false)\s*,\s*OS\.(?:DataTypes\.DataTypes|Types)\.(\w+)/g;
       let attrMatch;
       while ((attrMatch = attrPattern.exec(attrsStr)) !== null) {
         const rawType = attrMatch[3];
@@ -713,7 +713,7 @@ export async function fetchScreenDetails(baseUrl, moduleName, flow, screenName, 
 
     // Parse inputs from ServerDataConverter.to(paramVar, OS.DataTypes.DataTypes.TYPE)
     const inputs = [];
-    const inputPattern = /(\w+)\s*:\s*OS\.DataConversion\.ServerDataConverter\.to\s*\(\s*(\w+)\s*,\s*OS\.DataTypes\.DataTypes\.(\w+)\s*\)/g;
+    const inputPattern = /(\w+)\s*:\s*OS\.DataConversion\.ServerDataConverter\.to\s*\(\s*(\w+)\s*,\s*OS\.(?:DataTypes\.DataTypes|Types)\.(\w+)\s*\)/g;
     let inputMatch;
     while ((inputMatch = inputPattern.exec(body)) !== null) {
       const rawType = inputMatch[3];
@@ -728,18 +728,38 @@ export async function fetchScreenDetails(baseUrl, moduleName, flow, screenName, 
       }
     }
 
-    // Parse outputs from registerVariableGroupType("...$Action{ActionName}", [...])
+    // Parse outputs from registerVariableGroupType("<groupKey>", [...]).
+    // The group key is read from the action body's getVariableGroupType("...") call
+    // because its shape varies: local actions use "...$Action{ActionName}" while
+    // consumed producer actions use "...$rssespace{producer}_Action{ActionName}".
     const outputs = [];
-    const outputGroupRe = new RegExp(
-      'Controller\\.registerVariableGroupType\\s*\\(\\s*"([^"]*\\$Action' +
-      displayName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') +
-      ')"\\s*,\\s*\\[([\\s\\S]*?)\\]\\s*\\)',
-      'i'
-    );
-    const outputGroupMatch = outputGroupRe.exec(scriptText);
+    let outputGroupMatch = null;
+    // The body capture above stops at the first "\n};" (the end of the inputs
+    // object), so scan the action's full slice — up to the next prototype
+    // member — for the getVariableGroupType("<key>") call.
+    const nextProtoIdx = scriptText.indexOf("Controller.prototype.", match.index + 1);
+    const actionSlice = scriptText.slice(match.index, nextProtoIdx === -1 ? undefined : nextProtoIdx);
+    const groupKeyMatch = actionSlice.match(/getVariableGroupType\s*\(\s*"([^"]+)"\s*\)/);
+    if (groupKeyMatch) {
+      const keyRe = new RegExp(
+        'Controller\\.registerVariableGroupType\\s*\\(\\s*"(' +
+        groupKeyMatch[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&') +
+        ')"\\s*,\\s*\\[([\\s\\S]*?)\\]\\s*\\)'
+      );
+      outputGroupMatch = keyRe.exec(scriptText);
+    }
+    if (!outputGroupMatch) {
+      const outputGroupRe = new RegExp(
+        'Controller\\.registerVariableGroupType\\s*\\(\\s*"([^"]*\\$Action' +
+        displayName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') +
+        ')"\\s*,\\s*\\[([\\s\\S]*?)\\]\\s*\\)',
+        'i'
+      );
+      outputGroupMatch = outputGroupRe.exec(scriptText);
+    }
     if (outputGroupMatch) {
       const entriesStr = outputGroupMatch[2];
-      const outParamPattern = /name:\s*"([^"]+)"[\s\S]*?attrName:\s*"([^"]+)"[\s\S]*?mandatory:\s*(true|false)[\s\S]*?dataType:\s*OS\.DataTypes\.DataTypes\.(\w+)/g;
+      const outParamPattern = /name:\s*"([^"]+)"[\s\S]*?attrName:\s*"([^"]+)"[\s\S]*?mandatory:\s*(true|false)[\s\S]*?dataType:\s*OS\.(?:DataTypes\.DataTypes|Types)\.(\w+)/g;
       let outMatch;
       while ((outMatch = outParamPattern.exec(entriesStr)) !== null) {
         const rawType = outMatch[4];
@@ -827,7 +847,7 @@ export async function fetchScreenDetails(baseUrl, moduleName, flow, screenName, 
     const inputSet = actionInputAttrNames[actionNameFromKey.toLowerCase()] || new Set();
 
     // Parse individual entries and classify as input or local
-    const paramPattern = /name:\s*"([^"]+)"[\s\S]*?attrName:\s*"([^"]+)"[\s\S]*?mandatory:\s*(true|false)[\s\S]*?dataType:\s*OS\.DataTypes\.DataTypes\.(\w+)/g;
+    const paramPattern = /name:\s*"([^"]+)"[\s\S]*?attrName:\s*"([^"]+)"[\s\S]*?mandatory:\s*(true|false)[\s\S]*?dataType:\s*OS\.(?:DataTypes\.DataTypes|Types)\.(\w+)/g;
     let paramMatch;
     while ((paramMatch = paramPattern.exec(entriesStr)) !== null) {
       const rawType = paramMatch[4];
