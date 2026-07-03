@@ -23,12 +23,15 @@ import * as roles from './sections/roles.js';
 import * as staticEntities from './sections/staticEntities.js';
 import * as dataModels from './sections/dataModels.js';
 import * as builtinFunctions from './sections/builtinFunctions.js';
+import * as network from './sections/network.js';
+import * as tracer from './sections/tracer.js';
+import * as snapshots from './sections/snapshots.js';
 
 /* ================================================================== */
 /*  Section registry                                                   */
 /*  Add new sections here — showLoading / showEmptyState pick them up  */
 /* ================================================================== */
-const sections = [appmetadata, variables, screens, blocks, builtinFunctions, staticEntities, dataModels, roles, producers];
+const sections = [appmetadata, variables, screens, blocks, network, tracer, snapshots, builtinFunctions, staticEntities, dataModels, roles, producers];
 
 /* ================================================================== */
 /*  DOM references (orchestrator-level only)                           */
@@ -79,6 +82,17 @@ async function doScan() {
       await doScanODC(result);
     } else {
       await doScanReactive(result);
+    }
+
+    // Arm the observational features (network capture, action tracing)
+    // and load persisted snapshots — independent of the platform flow.
+    // Only on detected OutSystems pages, to avoid hooking arbitrary sites.
+    if (isODC || currentPlatform === "reactive") {
+      await Promise.all([
+        network.onScanned().catch(() => {}),
+        tracer.onScanned().catch(() => {}),
+        snapshots.onScanned().catch(() => {}),
+      ]);
     }
 
     // Build status message from section states

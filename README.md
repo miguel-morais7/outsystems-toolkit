@@ -27,6 +27,15 @@ Lists all screens grouped by UI Flow. Expand any screen to see its full structur
 ### Blocks
 Inspect live block component instances on the current screen. The extension walks the React Fiber tree to find all rendered blocks and exposes the same capabilities as screens — variables, actions, aggregates, and more. A **Block Tree** popup visualizes the full component hierarchy.
 
+### Server Calls
+Live log of every OutSystems server round-trip (data actions, server actions, aggregates). Expand any call to see the request and response payloads as pretty-printed JSON, and **replay** it with one click. Pause, resume, search, and clear the capture at any time.
+
+### Action Trace
+A chronological timeline of client-side logic: which screen actions, event handlers, server actions, data actions, and aggregate refreshes fired — with arguments, duration, and errors. Great for answering "what just happened when I clicked that button?"
+
+### Snapshots
+Capture the current values of all client variables plus the current screen's and blocks' variables as a named snapshot. Restore it later with one click, or export/import as JSON to share a reproduction scenario with a teammate. Snapshots persist per app.
+
 ### Static Entities
 Browse entities grouped by module with attribute schemas and all records. *(Reactive only)*
 
@@ -81,6 +90,7 @@ View producer references grouped by consumer module with health status indicator
 | `activeTab` | Access the current tab for script injection |
 | `scripting` | Inject page scripts to read OutSystems runtime data |
 | `sidePanel` | Render the UI as a Chrome side panel |
+| `storage` | Persist variable snapshots locally |
 | `tabs` | Detect tab navigation for auto-rescan |
 | Host permissions (`http/https`) | Allow script injection on any page |
 

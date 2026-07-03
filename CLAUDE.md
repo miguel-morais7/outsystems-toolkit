@@ -65,6 +65,9 @@ Files are injected as plain scripts (not ES modules) into the page's MAIN world.
 | `serverActions.js` | Server action discovery and invocation |
 | `builtinFunctions.js` | Built-in function discovery, override with hardcoded values, restore originals |
 | `dataModels.js` | ODC entity and structure discovery via dynamic chunk importing |
+| `networkInspector.js` | fetch/XHR hooks capturing `/screenservices/` calls into a ring buffer (`window.__osNetLog`); replay support |
+| `actionTracer.js` | Controller prototype wrapping to trace action executions into `window.__osTraceLog`; re-wraps on poll for SPA navigations |
+| `snapshots.js` | Capture/restore of client + screen + block variable values (scalars restored, complex export-only) |
 
 #### Page Script Conventions
 
@@ -86,8 +89,12 @@ Each feature lives in `sections/` and exports a consistent interface consumed by
 
 Sections are registered in `sidepanel.js`:
 ```js
-const sections = [appmetadata, variables, screens, blocks, builtinFunctions, staticEntities, dataModels, roles, producers];
+const sections = [appmetadata, variables, screens, blocks, network, tracer, snapshots, builtinFunctions, staticEntities, dataModels, roles, producers];
 ```
+
+**Polling sections** (`sections/network.js`, `sections/tracer.js`): these expose an extra `onScanned()` entry point called after every successful scan to (re-)arm their page hooks, and poll the page (~1.2 s) for new entries **only while their section is expanded**. Page-side logs are ring buffers keyed by monotonically increasing `seq`; a `lastSeq` lower than the panel's means the page reloaded and the panel resets. Entries that settle asynchronously (in-flight responses, running actions) are refreshed via `*_GET_BY_IDS` actions.
+
+**Snapshots** (`sections/snapshots.js`): also exposes `onScanned()`; persists snapshots in `chrome.storage.local` under `osSnapshots`, keyed by app origin. Restore reports per-variable skips (complex types are export-only). The tracer's method wrappers delegate `toString()` to the original function — several page scripts sniff method source code (signature parsing, `getVariableGroupType` extraction), so this invariant must be preserved.
 
 The **Screens** section is split into sub-modules under `sections/screens/`:
 - `index.js` — Entry point, all delegated event listeners, re-exports public API
