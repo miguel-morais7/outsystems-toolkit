@@ -113,6 +113,9 @@ async function doInjection(tabId) {
         "pageScript/producers.js",
         "pageScript/appDefinition.js",
         "pageScript/dataModels.js",
+        "pageScript/networkInspector.js",
+        "pageScript/actionTracer.js",
+        "pageScript/snapshots.js",
       ],
     });
   }
@@ -215,6 +218,19 @@ const PAGE_ACTIONS = {
   DISCOVER_PRODUCER_RESOURCES:{ func: () => _osProducerResourceUrls(),                                                args: () => [] },
   SCAN_APP_DEFINITION:       { func: (p) => p === "odc" ? _osOdcAppDefinitionScan() : _osAppDefinitionScan(),        args: msg => [msg._platform] },
   ODC_SCAN_DATA_MODELS:      { func: (mod) => _osOdcDataModelsScan(mod),                                              args: msg => [msg.moduleName] },
+  NETWORK_START:             { func: () => _osNetworkStart(),                                                         args: () => [] },
+  NETWORK_GET_ENTRIES:       { func: (s) => _osNetworkGetEntries(s),                                                  args: msg => [msg.sinceSeq || 0] },
+  NETWORK_GET_BY_IDS:        { func: (ids) => _osNetworkGetByIds(ids),                                                args: msg => [msg.ids || []] },
+  NETWORK_SET_ENABLED:       { func: (on) => _osNetworkSetEnabled(on),                                                args: msg => [!!msg.enabled] },
+  NETWORK_CLEAR:             { func: () => _osNetworkClear(),                                                         args: () => [] },
+  NETWORK_REPLAY:            { func: (id) => _osNetworkReplay(id),                                                    args: msg => [msg.id] },
+  TRACER_START:              { func: () => _osTracerStart(),                                                          args: () => [] },
+  TRACER_GET_ENTRIES:        { func: (s) => _osTracerGetEntries(s),                                                   args: msg => [msg.sinceSeq || 0] },
+  TRACER_GET_BY_IDS:         { func: (ids) => _osTracerGetByIds(ids),                                                 args: msg => [msg.ids || []] },
+  TRACER_SET_ENABLED:        { func: (on) => _osTracerSetEnabled(on),                                                 args: msg => [!!msg.enabled] },
+  TRACER_CLEAR:              { func: () => _osTracerClear(),                                                          args: () => [] },
+  SNAPSHOT_CAPTURE:          { func: () => _osSnapshotCapture(),                                                      args: () => [] },
+  SNAPSHOT_RESTORE:          { func: (snap) => _osSnapshotRestore(snap),                                              args: msg => [msg.snapshot] },
 };
 
 /**

@@ -185,6 +185,120 @@
       <div id="block-list" class="var-list"></div>
     </div>
 
+    <!-- Network — server call inspector (populated dynamically) -->
+    <div id="network-section" class="section hidden collapsed">
+      <div class="section-header" data-section="network">
+        <svg class="section-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+        <span class="section-title">Server Calls</span>
+        <span id="network-count" class="section-count">0</span>
+      </div>
+      <div class="producer-search-wrapper">
+        <div class="search-bar">
+          <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+          <input id="input-search-network" type="text" placeholder="Search server calls…" autocomplete="off" />
+          <button id="btn-network-toggle" class="filter-toggle" title="Pause capture">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="6" y="4" width="4" height="16"/>
+              <rect x="14" y="4" width="4" height="16"/>
+            </svg>
+            <span id="network-toggle-label">Pause</span>
+          </button>
+          <button id="btn-network-clear" class="filter-toggle" title="Clear captured calls">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"/>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+            </svg>
+            Clear
+          </button>
+        </div>
+      </div>
+      <div id="network-list" class="var-list"></div>
+    </div>
+
+    <!-- Action Trace — client logic timeline (populated dynamically) -->
+    <div id="tracer-section" class="section hidden collapsed">
+      <div class="section-header" data-section="tracer">
+        <svg class="section-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+        <span class="section-title">Action Trace</span>
+        <span id="tracer-count" class="section-count">0</span>
+      </div>
+      <div class="producer-search-wrapper">
+        <div class="search-bar">
+          <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+          <input id="input-search-tracer" type="text" placeholder="Search traced actions…" autocomplete="off" />
+          <button id="btn-tracer-toggle" class="filter-toggle" title="Pause tracing">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="6" y="4" width="4" height="16"/>
+              <rect x="14" y="4" width="4" height="16"/>
+            </svg>
+            <span id="tracer-toggle-label">Pause</span>
+          </button>
+          <button id="btn-tracer-clear" class="filter-toggle" title="Clear trace">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"/>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+            </svg>
+            Clear
+          </button>
+        </div>
+      </div>
+      <div id="tracer-list" class="var-list"></div>
+    </div>
+
+    <!-- Snapshots — variable state capture/restore (populated dynamically) -->
+    <div id="snapshot-section" class="section hidden collapsed">
+      <div class="section-header" data-section="snapshots">
+        <svg class="section-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+        <span class="section-title">Snapshots</span>
+        <span id="snapshot-count" class="section-count">0</span>
+      </div>
+      <div class="producer-search-wrapper">
+        <div class="search-bar">
+          <input id="input-snapshot-name" type="text" placeholder="Snapshot name…" autocomplete="off" />
+          <button id="btn-snapshot-capture" class="filter-toggle" title="Capture current variable state">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+            Capture
+          </button>
+          <button id="btn-snapshot-import" class="filter-toggle" title="Import snapshot from JSON file">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Import
+          </button>
+          <input id="input-snapshot-file" type="file" accept=".json,application/json" class="hidden" />
+        </div>
+      </div>
+      <div id="snapshot-list" class="var-list"></div>
+    </div>
+
     <!-- Built-in Functions (populated dynamically) -->
     <div id="builtin-section" class="section hidden collapsed">
       <div class="section-header" data-section="builtinFunctions">
