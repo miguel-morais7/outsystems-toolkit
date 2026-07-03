@@ -229,7 +229,7 @@ function buildRow(snap) {
   if (isExpanded) {
     const varLines = []
       .concat((snap.clientVars || []).map(v => `${v.module}.${v.name} = ${JSON.stringify(v.value)}`))
-      .concat((snap.screenVars || []).map(v => `${v.name}${v.complex ? " [complex — export only]" : ""} = ${JSON.stringify(v.value)}`));
+      .concat((snap.screenVars || []).map(v => `${v.source && v.source !== "Screen" ? v.source + " :: " : ""}${v.name}${v.complex ? " [complex — export only]" : ""} = ${JSON.stringify(v.value)}`));
     details = `
     <div class="net-details">
       <div class="net-detail-url">${esc(snap.context?.url || "")}</div>

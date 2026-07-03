@@ -100,11 +100,14 @@ in one click; export/import as JSON to share reproduction scenarios.
   - `clientVars`: iterates loaded client-variable modules (Reactive
     `window.__osCV_*` getters; ODC `window.__osODC_CV_*` instances), capturing
     `{ module, name, value, type, platform }` for writable scalar variables.
-  - `screenVars`: from the current screen's model — variable defs discovered via
+  - `screenVars`: from the current screen's model AND all live blocks (screens
+    often keep their editable state inside blocks) — variable defs discovered via
     `getVariablesRecordConstructor()` metadata (`attributesToDeclare()` on
     Reactive, `Attributes` on ODC), skipping aggregate/data-action internals.
-    Scalars captured with type; complex values (Record/RecordList/Object)
-    captured via `_safeSerialize` and flagged `complex: true`.
+    Each entry is tagged with its `source` ("Screen" or the block path) so
+    restore can target the right view. Scalars captured with type; complex
+    values (Record/RecordList/Object) exported as plain JSON and flagged
+    `complex: true`.
   - `context`: `{ url, screenPath, capturedAt }`.
 - `_osSnapshotRestore(snapshot)` — sets client vars through the platform-appropriate
   setter (`_osClientVarsSet` / `_osOdcClientVarsSet`, reusing their coercion), sets

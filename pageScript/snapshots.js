@@ -29,10 +29,18 @@ function _osSnapshotClientVars() {
     var mod = window[key];
     if (!mod) continue;
 
-    // Reactive modules expose getters as own properties; ODC instances on the prototype.
-    var source = isReactive ? mod : Object.getPrototypeOf(mod);
-    var names;
-    try { names = Object.getOwnPropertyNames(source); } catch (_) { continue; }
+    // Getter/setter methods may live as own properties OR on the prototype
+    // (AMD module objects vary by platform version; ODC uses class instances
+    // whose prototype methods are non-enumerable) — gather names from both.
+    var nameSet = {};
+    try {
+      Object.getOwnPropertyNames(mod).forEach(function (n) { nameSet[n] = true; });
+      var proto = Object.getPrototypeOf(mod);
+      if (proto && proto !== Object.prototype) {
+        Object.getOwnPropertyNames(proto).forEach(function (n) { nameSet[n] = true; });
+      }
+    } catch (_) { continue; }
+    var names = Object.keys(nameSet);
 
     for (var i = 0; i < names.length; i++) {
       var name = names[i];
@@ -109,6 +117,39 @@ function _osSnapshotScreenVarDefs(model) {
   return defs;
 }
 
+/** Capture one view instance's variable values, tagged with a source label. */
+function _osSnapshotCollectModelVars(model, source) {
+  var vars = [];
+  // The variables getter itself can throw on some blocks
+  // ("Model does not contain variables") — treat those as empty.
+  var modelVars = null;
+  try { modelVars = model ? model.variables : null; } catch (_) { return vars; }
+  if (!modelVars) return vars;
+  var defs = _osSnapshotScreenVarDefs(model);
+  for (var i = 0; i < defs.length; i++) {
+    var def = defs[i];
+    var isComplex = !!_OS_SNAPSHOT_COMPLEX_TYPES[def.type];
+    var value = null;
+    try {
+      var raw = modelVars[def.internalName];
+      if (isComplex) {
+        value = _introspectToPlain(_introspectValue(raw, def.internalName, 0, 100));
+      } else {
+        value = _safeSerialize(raw);
+      }
+    } catch (_) { continue; }
+    vars.push({
+      name: def.name,
+      internalName: def.internalName,
+      type: def.type,
+      value: value,
+      complex: isComplex,
+      source: source,
+    });
+  }
+  return vars;
+}
+
 /* ------------------------------------------------------------------ */
 /*  CAPTURE                                                            */
 /* ------------------------------------------------------------------ */
@@ -116,35 +157,31 @@ function _osSnapshotCapture() {
   try {
     var clientVars = _osSnapshotClientVars();
 
+    // Screen + all live blocks (screens often keep their editable state
+    // inside blocks, so the screen model alone would miss most of it).
     var screenVars = [];
     var screenPath = "";
     try {
       var vi = _findCurrentScreenViewInstance();
-      var model = vi ? vi.model : null;
-      if (model && model.variables) {
-        var defs = _osSnapshotScreenVarDefs(model);
-        for (var i = 0; i < defs.length; i++) {
-          var def = defs[i];
-          var isComplex = !!_OS_SNAPSHOT_COMPLEX_TYPES[def.type];
-          var value = null;
+      if (vi) screenVars = _osSnapshotCollectModelVars(vi.model, "Screen");
+    } catch (_) { /* no current screen — client vars only */ }
+    try {
+      var blocksResult = _osDiscoverBlocks();
+      if (blocksResult.ok) {
+        for (var b = 0; b < blocksResult.blocks.length; b++) {
           try {
-            var raw = model.variables[def.internalName];
-            if (isComplex) {
-              value = _introspectToPlain(_introspectValue(raw, def.internalName, 0, 100));
-            } else {
-              value = _safeSerialize(raw);
-            }
-          } catch (_) { continue; }
-          screenVars.push({
-            name: def.name,
-            internalName: def.internalName,
-            type: def.type,
-            value: value,
-            complex: isComplex,
-          });
+            var block = blocksResult.blocks[b];
+            var blockVi = _findViewInstanceByIndex(block.viewIndex);
+            if (!blockVi) continue;
+            var sourcePath = block.dataBlockAttr || block.modulePath;
+            if (!sourcePath) continue;
+            screenVars = screenVars.concat(
+              _osSnapshotCollectModelVars(blockVi.model, sourcePath)
+            );
+          } catch (_) { /* one bad block must not abort the rest */ }
         }
       }
-    } catch (_) { /* no current screen — client vars only */ }
+    } catch (_) { /* block capture is best-effort */ }
 
     try {
       screenPath = location.pathname.split("/").filter(Boolean).pop() || "";
@@ -229,44 +266,64 @@ function _osSnapshotRestore(snapshot) {
       else skipped.push({ name: cv.module + "." + cv.name, reason: (result && result.error) || "Setter failed." });
     }
 
-    // --- Screen variables — direct model writes, one flush at the end ---
+    // --- Screen/block variables — direct model writes, one flush per view ---
     var screenVars = snapshot.screenVars || [];
     if (screenVars.length > 0) {
-      var vi = _findCurrentScreenViewInstance();
-      var model = vi ? vi.model : null;
-      if (!model || !model.variables) {
-        for (var s = 0; s < screenVars.length; s++) {
-          skipped.push({ name: screenVars[s].name, reason: "No current screen model found." });
-        }
-      } else {
-        var dirty = false;
-        for (var j = 0; j < screenVars.length; j++) {
-          var sv = screenVars[j];
-          if (sv.complex) {
-            skipped.push({ name: sv.name, reason: "Complex type — restore not supported." });
-            continue;
-          }
-          var currentVal;
-          try { currentVal = model.variables[sv.internalName]; } catch (_) { currentVal = undefined; }
-          if (currentVal === undefined) {
-            skipped.push({ name: sv.name, reason: "Variable not found on current screen." });
-            continue;
-          }
-          var svRaw = _osSnapshotNormalizeRaw(sv.value, sv.type);
-          var coerced = _coerceValue(svRaw, sv.type, currentVal);
-          if (coerced.error) {
-            skipped.push({ name: sv.name, reason: coerced.error });
-            continue;
-          }
-          try {
-            model.variables[sv.internalName] = coerced.value;
-            restored++;
-            dirty = true;
-          } catch (e) {
-            skipped.push({ name: sv.name, reason: e.message });
+      // Resolve each capture source ("Screen" or a block path) to a live view.
+      var viewsBySource = {};
+      var screenVi = _findCurrentScreenViewInstance();
+      if (screenVi) viewsBySource["Screen"] = screenVi;
+      try {
+        var blocksResult = _osDiscoverBlocks();
+        if (blocksResult.ok) {
+          for (var b = 0; b < blocksResult.blocks.length; b++) {
+            var block = blocksResult.blocks[b];
+            var sourcePath = block.dataBlockAttr || block.modulePath;
+            if (!sourcePath || viewsBySource[sourcePath]) continue;
+            var blockVi = _findViewInstanceByIndex(block.viewIndex);
+            if (blockVi) viewsBySource[sourcePath] = blockVi;
           }
         }
-        if (dirty) _flushAndRerender(model, vi);
+      } catch (_) {}
+
+      var dirtyViews = [];
+      for (var j = 0; j < screenVars.length; j++) {
+        var sv = screenVars[j];
+        var source = sv.source || "Screen";
+        if (sv.complex) {
+          skipped.push({ name: sv.name, reason: "Complex type — restore not supported." });
+          continue;
+        }
+        var targetVi = viewsBySource[source];
+        var model = targetVi ? targetVi.model : null;
+        var modelVars = null;
+        try { modelVars = model ? model.variables : null; } catch (_) { modelVars = null; }
+        if (!modelVars) {
+          skipped.push({ name: sv.name, reason: "'" + source + "' not found on current screen." });
+          continue;
+        }
+        var currentVal;
+        try { currentVal = modelVars[sv.internalName]; } catch (_) { currentVal = undefined; }
+        if (currentVal === undefined) {
+          skipped.push({ name: sv.name, reason: "Variable not found on '" + source + "'." });
+          continue;
+        }
+        var svRaw = _osSnapshotNormalizeRaw(sv.value, sv.type);
+        var coerced = _coerceValue(svRaw, sv.type, currentVal);
+        if (coerced.error) {
+          skipped.push({ name: sv.name, reason: coerced.error });
+          continue;
+        }
+        try {
+          modelVars[sv.internalName] = coerced.value;
+          restored++;
+          if (dirtyViews.indexOf(targetVi) === -1) dirtyViews.push(targetVi);
+        } catch (e) {
+          skipped.push({ name: sv.name, reason: e.message });
+        }
+      }
+      for (var d = 0; d < dirtyViews.length; d++) {
+        _flushAndRerender(dirtyViews[d].model, dirtyViews[d]);
       }
     }
 
