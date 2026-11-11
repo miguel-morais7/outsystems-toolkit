@@ -4,8 +4,8 @@ A Chrome extension that gives you deep runtime visibility into OutSystems applic
 
 Supports both **OutSystems 11 (Reactive)** and **ODC** applications.
 
-<!-- TODO: Add Chrome Web Store badge once published -->
-<!-- [![Chrome Web Store](https://img.shields.io/chrome-web-store/v/EXTENSION_ID)](https://chrome.google.com/webstore/detail/EXTENSION_ID) -->
+[![Chrome Web Store](https://img.shields.io/chrome-web-store/v/khpgmlheogmjbefilocghackhnnghdnj?label=Chrome%20Web%20Store)](https://chromewebstore.google.com/detail/khpgmlheogmjbefilocghackhnnghdnj)
+[![Users](https://img.shields.io/chrome-web-store/users/khpgmlheogmjbefilocghackhnnghdnj)](https://chromewebstore.google.com/detail/khpgmlheogmjbefilocghackhnnghdnj)
 
 ## Features
 
@@ -61,7 +61,6 @@ View producer references grouped by consumer module with health status indicator
 
 ### From the Chrome Web Store
 
-<!-- TODO: Add direct link once published -->
 1. Visit the [OutSystems Toolkit](https://chromewebstore.google.com/detail/khpgmlheogmjbefilocghackhnnghdnj) page on the Chrome Web Store.
 2. Click **Add to Chrome**.
 
