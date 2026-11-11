@@ -62,7 +62,7 @@ View producer references grouped by consumer module with health status indicator
 ### From the Chrome Web Store
 
 <!-- TODO: Add direct link once published -->
-1. Visit the [OutSystems Toolkit]() page on the Chrome Web Store.
+1. Visit the [OutSystems Toolkit](https://chromewebstore.google.com/detail/khpgmlheogmjbefilocghackhnnghdnj) page on the Chrome Web Store.
 2. Click **Add to Chrome**.
 
 ### From Source (Developer Mode)
